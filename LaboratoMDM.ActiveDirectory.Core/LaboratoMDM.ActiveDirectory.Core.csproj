@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.DirectoryServices" Version="10.0.1" />
+    <PackageReference Include="System.DirectoryServices.AccountManagement" Version="10.0.1" />
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LaboratoMDM.Core\LaboratoMDM.Core.csproj" />
+  </ItemGroup>
+
+</Project>
