@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
+using System.Linq;
 using System.Net.NetworkInformation;
 
 namespace LaboratoMDM.ActiveDirectory.Service.Implementations
@@ -10,20 +11,21 @@ namespace LaboratoMDM.ActiveDirectory.Service.Implementations
     public class GpoCollector : IGpoCollector
     {
         private readonly ILogger<GpoCollector> _logger;
-        private readonly string _domainDn;
         private readonly string _domainName;
+        private readonly string _domainDn;
 
         public GpoCollector(ILogger<GpoCollector> logger)
         {
             _logger = logger;
 
             _domainName = IPGlobalProperties.GetIPGlobalProperties().DomainName;
+
             _domainDn = string.Join(",",
-                _domainName.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                _domainName.Split('.', StringSplitOptions.RemoveEmptyEntries)
                            .Select(p => $"DC={p}"));
         }
 
-        public GpoTreeInfo? Collect()
+        public GpoTopology? Collect()
         {
             if (string.IsNullOrWhiteSpace(_domainName))
             {
@@ -31,31 +33,30 @@ namespace LaboratoMDM.ActiveDirectory.Service.Implementations
                 return null;
             }
 
-            _logger.LogInformation("Starting GPO collection for domain {Domain}", _domainName);
+            _logger.LogInformation("Starting GPO topology collection for domain {Domain}", _domainName);
 
-            var result = new GpoTreeInfo
+            var topology = new GpoTopology
             {
                 Domain = _domainName
             };
 
-            // 1. Собираем ВСЕ GPO
             var gpoMap = CollectAllGpos();
-            result.AllGpos.AddRange(gpoMap.Values);
+            topology.AllGpos.AddRange(gpoMap.Values);
 
-            // 2. Собираем OU → GPO links
-            CollectOuLinks(result, gpoMap);
+            CollectOuTopology(topology, gpoMap);
 
             _logger.LogInformation(
-                "GPO collection completed. Total GPOs: {GpoCount}, OUs: {OuCount}",
-                result.AllGpos.Count,
-                result.OuLinks.Count);
+                "GPO topology collected. GPOs: {GpoCount}, OUs: {OuCount}",
+                topology.AllGpos.Count,
+                topology.OuTopology.Count);
 
-            return result;
+            return topology;
         }
 
+        // ===================== GPO =====================
         private Dictionary<string, GpoInfo> CollectAllGpos()
         {
-            var gpos = new Dictionary<string, GpoInfo>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, GpoInfo>(StringComparer.OrdinalIgnoreCase);
 
             string policiesPath = $"LDAP://CN=Policies,CN=System,{_domainDn}";
             _logger.LogInformation("Collecting GPOs from {Path}", policiesPath);
@@ -69,30 +70,41 @@ namespace LaboratoMDM.ActiveDirectory.Service.Implementations
             searcher.PropertiesToLoad.Add("displayName");
             searcher.PropertiesToLoad.Add("name");
             searcher.PropertiesToLoad.Add("gPCFileSysPath");
+            searcher.PropertiesToLoad.Add("flags");
+            searcher.PropertiesToLoad.Add("gPCWQLFilter");
 
             foreach (SearchResult sr in searcher.FindAll())
             {
                 string guid = sr.Properties["name"]?[0]?.ToString() ?? "";
-                string displayName = sr.Properties["displayName"]?[0]?.ToString() ?? "";
-                string path = sr.Properties["gPCFileSysPath"]?[0]?.ToString() ?? "";
-
                 if (string.IsNullOrEmpty(guid))
                     continue;
 
-                gpos[guid] = new GpoInfo
+                int flags = sr.Properties["flags"]?.Count > 0
+                    ? Convert.ToInt32(sr.Properties["flags"][0])
+                    : 0;
+
+                var gpo = new GpoInfo
                 {
                     Guid = guid,
-                    DisplayName = displayName,
-                    FileSysPath = path
+                    DisplayName = sr.Properties["displayName"]?[0]?.ToString() ?? "",
+                    FileSysPath = sr.Properties["gPCFileSysPath"]?[0]?.ToString() ?? "",
+                    UserEnabled = (flags & 1) == 0,
+                    ComputerEnabled = (flags & 2) == 0,
+                    WmiFilter = sr.Properties["gPCWQLFilter"]?.Count > 0
+                        ? sr.Properties["gPCWQLFilter"][0].ToString()
+                        : null
                 };
 
-                _logger.LogInformation("Found GPO: {Name} ({Guid})", displayName, guid);
+                result[guid] = gpo;
+
+                _logger.LogInformation("GPO: {Name} ({Guid})", gpo.DisplayName, gpo.Guid);
             }
 
-            return gpos;
+            return result;
         }
 
-        private void CollectOuLinks(GpoTreeInfo result, Dictionary<string, GpoInfo> gpoMap)
+        // ===================== OU =====================
+        private void CollectOuTopology(GpoTopology topology, Dictionary<string, GpoInfo> gpoMap)
         {
             string domainPath = $"LDAP://{_domainDn}";
 
@@ -102,36 +114,38 @@ namespace LaboratoMDM.ActiveDirectory.Service.Implementations
                 Filter = "(objectClass=organizationalUnit)"
             };
 
-            searcher.PropertiesToLoad.Add("distinguishedName");
             searcher.PropertiesToLoad.Add("name");
+            searcher.PropertiesToLoad.Add("distinguishedName");
             searcher.PropertiesToLoad.Add("gPLink");
+            searcher.PropertiesToLoad.Add("gPOptions");
 
-            foreach (SearchResult ou in searcher.FindAll())
+            foreach (SearchResult sr in searcher.FindAll())
             {
-                string ouName = ou.Properties["name"]?[0]?.ToString() ?? "";
-                string dn = ou.Properties["distinguishedName"]?[0]?.ToString() ?? "";
-
-                var linkInfo = new OuGpoLink
+                var ou = new OuGpoLink
                 {
-                    OuName = ouName,
-                    DistinguishedName = dn
+                    OuName = sr.Properties["name"]?[0]?.ToString() ?? "",
+                    DistinguishedName = sr.Properties["distinguishedName"]?[0]?.ToString() ?? "",
+                    BlockInheritance =
+                        sr.Properties["gPOptions"]?.Count > 0 &&
+                        Convert.ToInt32(sr.Properties["gPOptions"][0]) == 1
                 };
 
-                if (ou.Properties["gPLink"]?.Count > 0)
+                if (sr.Properties["gPLink"]?.Count > 0)
                 {
-                    string gpLink = ou.Properties["gPLink"][0].ToString();
-                    ParseGpLink(gpLink, linkInfo, gpoMap);
+                    ParseGpLink(sr.Properties["gPLink"][0].ToString(), ou, gpoMap);
                 }
 
-                result.OuLinks.Add(linkInfo);
+                topology.OuTopology.Add(ou);
 
                 _logger.LogInformation(
-                    "OU {OU} has {Count} linked GPOs",
-                    ouName,
-                    linkInfo.LinkedGpos.Count);
+                    "OU {OU} → GPOs: {Count}, BlockInheritance: {Block}",
+                    ou.OuName,
+                    ou.GpoLinks.Count,
+                    ou.BlockInheritance);
             }
         }
 
+        // ===================== gPLink =====================
         private void ParseGpLink(
             string gpLink,
             OuGpoLink ou,
@@ -139,29 +153,43 @@ namespace LaboratoMDM.ActiveDirectory.Service.Implementations
         {
             var links = gpLink.Split(new[] { "][" }, StringSplitOptions.RemoveEmptyEntries);
 
+            int order = 1;
+
             foreach (var link in links)
             {
                 var clean = link.Replace("[", "").Replace("]", "");
                 var parts = clean.Split(';');
 
-                if (parts.Length == 0)
+                if (parts.Length < 2)
                     continue;
 
-                // CN={GUID}
-                var guidPart = parts[0];
-                int start = guidPart.IndexOf('{');
-                int end = guidPart.IndexOf('}');
+                string ldapPath = parts[0];
+                int flags = int.Parse(parts[1]);
 
-                if (start < 0 || end < 0)
+                string guid = ExtractGuid(ldapPath);
+                if (string.IsNullOrEmpty(guid))
                     continue;
 
-                string guid = guidPart.Substring(start + 1, end - start - 1);
+                if (!gpoMap.TryGetValue(guid, out var gpo))
+                    continue;
 
-                if (gpoMap.TryGetValue(guid, out var gpo))
+                ou.GpoLinks.Add(new GpoLinkInfo
                 {
-                    ou.LinkedGpos.Add(gpo);
-                }
+                    Gpo = gpo,
+                    LinkOrder = order++,
+                    Enabled = (flags & 1) == 0,
+                    Enforced = (flags & 2) == 2
+                });
             }
+        }
+
+        private static string ExtractGuid(string ldapPath)
+        {
+            int start = ldapPath.IndexOf('{');
+            int end = ldapPath.IndexOf('}');
+            return (start >= 0 && end > start)
+                ? ldapPath.Substring(start + 1, end - start - 1)
+                : string.Empty;
         }
     }
 }

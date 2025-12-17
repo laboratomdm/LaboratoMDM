@@ -15,13 +15,13 @@ namespace LaboratoMDM.Core.Models
         // Hardware
         public string CPU { get; set; } = string.Empty;
         public int RAMGb { get; set; }
-        public List<string> Disks { get; set; } = new();
-        public List<string> GPU { get; set; } = new();
+        public List<string> Disks { get; set; } = [];
+        public List<string> GPU { get; set; } = [];
 
         // Network
-        public List<string> IPAddresses { get; set; } = new();
-        public List<string> MACAddresses { get; set; } = new();
-        public string Motherboard { get; internal set; }
+        public List<string> IPAddresses { get; set; } = [];
+        public List<string> MACAddresses { get; set; } = [];
+        public string Motherboard { get; set; } = string.Empty;
     }
 
 }

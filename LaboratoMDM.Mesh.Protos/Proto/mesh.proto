@@ -1,0 +1,54 @@
+﻿syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+package laborato.mesh;
+
+message NodeSystemInfo {
+    string nodeId = 1;
+    string hostName = 2;
+    string osVersion = 3;
+    string cpu = 4;
+    int32 ramGb = 5;
+    repeated string disks = 6;
+    repeated string gpu = 7;
+    repeated string ipAddresses = 8;
+    repeated string macAddresses = 9;
+    string motherboard = 10;
+}
+
+message UserInfo {
+    string name = 1;
+    string sid = 2;
+    string accountType = 3;
+    bool isEnabled = 4;
+    string description = 5;
+    string homeDirectory = 6;
+    repeated string groups = 7;
+}
+
+message NodeFullInfo {
+    NodeSystemInfo systemInfo = 1;
+    repeated UserInfo users = 2;
+    google.protobuf.Timestamp lastBootTime = 3;
+    string manufacturer = 4;
+    string model = 5;
+    string firmwareVersion = 6;
+    string timeZone = 7;
+    bool isDomainJoined = 8;
+}
+
+message NodeInfoRequest {
+    string nodeId = 1; // опционально: если хотим запросить конкретную ноду
+}
+
+message NodeInfoResponse {
+    NodeFullInfo info = 1;
+}
+
+service MeshService {
+    rpc SendNodeInfo(NodeFullInfo) returns (google.protobuf.Empty);
+    rpc RequestNodeInfo(NodeInfoRequest) returns (NodeInfoResponse);
+    rpc StreamNodeInfo(stream NodeFullInfo) returns (google.protobuf.Empty);
+}

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "LaboratoMDM.NodeEngine.Master": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

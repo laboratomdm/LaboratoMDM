@@ -1,18 +1,16 @@
 ﻿using LaboratoMDM.Core.Models;
+using LaboratoMDM.NodeEngine;
 using Microsoft.Extensions.Logging;
 using System.Management;
 using System.Net.NetworkInformation;
+using System.Runtime.Versioning;
 
-namespace LaboratoMDM.Core.Services.Implementations
+namespace LaboratoMDM.NodeEngine.Implementations
 {
-    public class NodeSystemInfoCollector : INodeSystemInfoCollector
+    [SupportedOSPlatform("windows")]
+    public class NodeSystemInfoCollector(ILogger<NodeSystemInfoCollector> logger) : INodeSystemInfoCollector
     {
-        private readonly ILogger<NodeSystemInfoCollector> _logger;
-
-        public NodeSystemInfoCollector(ILogger<NodeSystemInfoCollector> logger)
-        {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
+        private readonly ILogger<NodeSystemInfoCollector> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         public NodeSystemInfo Collect()
         {

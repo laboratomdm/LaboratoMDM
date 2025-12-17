@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LaboratoMDM.Core.Services
+namespace LaboratoMDM.NodeEngine
 {
     public interface INodeSystemInfoCollector
     {

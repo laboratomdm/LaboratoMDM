@@ -7,6 +7,6 @@ namespace LaboratoMDM.ActiveDirectory.Service
         /// <summary>
         /// Собирает дерево всех GPO в домене
         /// </summary>
-        GpoTreeInfo? Collect();
+        GpoTopology? Collect();
     }
 }

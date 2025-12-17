@@ -1,14 +1,14 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using LaboratoMDM.ActiveDirectory.Service;
 using LaboratoMDM.ActiveDirectory.Service.Implementations;
+using LaboratoMDM.ActiveDirectory.Service.Rsop;
 using LaboratoMDM.Core.Models;
-using LaboratoMDM.Core.Services;
-using LaboratoMDM.Core.Services.Implementations;
+using LaboratoMDM.NodeEngine;
+using LaboratoMDM.NodeEngine.Implementations;
 using LaboratoMDM.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
-
 class Program
 {
     static void Main(string[] args)
@@ -66,7 +66,23 @@ class Program
         PrintJson(systemInfo);
 
         Console.WriteLine("\n=== GPO Info ===");
-        PrintJson(gpoTree);
+        if (gpoTree == null)
+        {
+            Console.WriteLine("\n=== NO GPO Info ===");
+        }
+        else
+        {
+            PrintJson(gpoTree);
+
+            // Симуляция RSOP
+            var simulator = new RsopSimulator();
+            var result = simulator.SimulateComputerRsop(
+                "CN=PC01,OU=Servers,OU=Corp,DC=laborato,DC=corp",
+                gpoTree);
+
+            Console.WriteLine("\n=== RSOP Simulation Info ===");
+            PrintJson(result);
+        }
     }
 
     private static DomainInfo? CollectAdInfo(IAdCollector collector, ILogger logger)
@@ -102,17 +118,17 @@ class Program
         }
     }
 
-    private static List<GpoInfo> CollectGpoInfo(IGpoCollector collector, ILogger logger)
+    private static GpoTopology? CollectGpoInfo(IGpoCollector collector, ILogger logger)
     {
         try
         {
             logger.LogInformation("Collecting system hardware information...");
-            return collector.CollectAllGpoTree();
+            return collector.Collect();
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to collect system hardware info");
-            return [];
+            return null;
         }
     }
 
