@@ -5,6 +5,15 @@ import "google/protobuf/timestamp.proto";
 
 package laborato.mesh;
 
+message HeartbeatRequest {
+    string nodeId = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+message HeartbeatResponse {
+    google.protobuf.Timestamp serverTime = 1;
+}
+
 message NodeSystemInfo {
     string nodeId = 1;
     string hostName = 2;
@@ -51,4 +60,7 @@ service MeshService {
     rpc SendNodeInfo(NodeFullInfo) returns (google.protobuf.Empty);
     rpc RequestNodeInfo(NodeInfoRequest) returns (NodeInfoResponse);
     rpc StreamNodeInfo(stream NodeFullInfo) returns (google.protobuf.Empty);
+
+    //System Heartbeat
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }

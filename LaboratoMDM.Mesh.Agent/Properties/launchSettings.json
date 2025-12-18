@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "LaboratoMDM.Mesh.Agent": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

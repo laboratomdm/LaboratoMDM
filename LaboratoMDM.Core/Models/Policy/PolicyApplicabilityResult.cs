@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LaboratoMDM.Core.Models.Policy
+﻿namespace LaboratoMDM.Core.Models.Policy
 {
     public enum PolicyApplicabilityStatus
     {
@@ -19,6 +13,26 @@ namespace LaboratoMDM.Core.Models.Policy
         public PolicyApplicabilityStatus Status { get; init; }
         public string Reason { get; init; } = string.Empty;
         public string? Details { get; init; }
-    }
 
+        public static PolicyApplicabilityResult Applicable(string reason) =>
+            new()
+            {
+                Status = PolicyApplicabilityStatus.Applicable,
+                Reason = reason
+            };
+
+        public static PolicyApplicabilityResult NotApplicable(string reason) =>
+            new()
+            {
+                Status = PolicyApplicabilityStatus.NotApplicable,
+                Reason = reason
+            };
+
+        public static PolicyApplicabilityResult Unknown(string reason) =>
+            new()
+            {
+                Status = PolicyApplicabilityStatus.Unknown,
+                Reason = reason
+            };
+    }
 }

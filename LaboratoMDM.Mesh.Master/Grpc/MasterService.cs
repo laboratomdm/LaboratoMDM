@@ -1,78 +1,98 @@
-﻿using Grpc.Core;
+﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using Laborato.Mesh;
+using LaboratoMDM.Mesh.Master.Models;
+using LaboratoMDM.Mesh.Master.Repositories;
+using LaboratoMDM.Mesh.Master.Services;
+using LaboratoMDM.Mesh.Protos.Mapper;
 using Microsoft.Extensions.Logging;
-using Google.Protobuf.WellKnownTypes;
-using System.Collections.Concurrent;
 
-namespace LaboratoMDM.Mesh.Master
+namespace LaboratoMDM.Mesh.Master.Grpc
 {
     /// <summary>
-    /// Реализация MasterService, который принимает NodeFullInfo от агентов.
+    /// MasterService с поддержкой NodeFullInfo и Heartbeat
     /// </summary>
-    public class MasterService : MeshService.MeshServiceBase
+    public sealed class MasterService(
+        ILogger<MasterService> logger,
+        INodeInfoRepository nodeRepo,
+        IAgentRegistry registry) : MeshService.MeshServiceBase
     {
-        private readonly ILogger<MasterService> _logger;
-
-        // Можно хранить состояние агентов (например, последние данные)
-        private readonly ConcurrentDictionary<string, NodeFullInfo> _nodes = new();
-
-        public MasterService(ILogger<MasterService> logger)
-        {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
+        private readonly ILogger<MasterService> _logger = logger;
+        private readonly INodeInfoRepository _nodeRepo = nodeRepo;
+        private readonly IAgentRegistry _registry = registry;
 
         /// <summary>
-        /// Агент отправляет NodeFullInfo в один запрос (Unary)
+        /// Агент отправляет NodeFullInfo (Unary)
         /// </summary>
-        public override Task<Empty> SendNodeInfo(NodeFullInfo request, ServerCallContext context)
+        public override async Task<Empty> SendNodeInfo(NodeFullInfo request, ServerCallContext context)
         {
-            if (request?.SystemInfo?.NodeId == null)
+            var nodeId = request.SystemInfo?.NodeId;
+            if (string.IsNullOrWhiteSpace(nodeId))
+                return new Empty();
+
+            await _nodeRepo.UpdateNodeInfo(nodeId, request.FromProto());
+
+            await _registry.RegisterAgentAsync(new AgentInfo
             {
-                _logger.LogWarning("Received NodeFullInfo with null NodeId");
-                return Task.FromResult(new Empty());
-            }
+                AgentId = nodeId,
+                HostName = request.SystemInfo?.HostName ?? throw new Exception("Has no host name"),
+                LastHeartbeat = DateTime.UtcNow
+            });
 
-            _nodes[request.SystemInfo.NodeId] = request;
-
-            _logger.LogInformation("Received NodeFullInfo from node {NodeId} ({HostName})",
-                request.SystemInfo.NodeId, request.SystemInfo.HostName);
-
-            return Task.FromResult(new Empty());
+            _logger.LogInformation("Node {NodeId} updated", nodeId);
+            return new Empty();
         }
 
         /// <summary>
-        /// Агент может получить команду от мастера (пример запроса)
+        /// Запрос команд от мастера.
         /// </summary>
         public override Task<NodeInfoResponse> RequestNodeInfo(NodeInfoRequest request, ServerCallContext context)
         {
-            _logger.LogInformation("RequestNodeInfo called by {Caller}", context.Peer);
+            var nodeId = request.NodeId;
+            _logger.LogInformation("Command request from node {NodeId}", nodeId);
 
-            // Можно вернуть конкретные данные или просто подтверждение
-            return Task.FromResult(new NodeInfoResponse {});
+            return Task.FromResult(new NodeInfoResponse { });
         }
 
         /// <summary>
-        /// Агент потоково отправляет NodeFullInfo (ClientStreaming)
+        /// Потоковое обновление NodeFullInfo (ClientStreaming)
         /// </summary>
         public override async Task<Empty> StreamNodeInfo(IAsyncStreamReader<NodeFullInfo> requestStream, ServerCallContext context)
         {
             await foreach (var nodeInfo in requestStream.ReadAllAsync())
             {
-                if (nodeInfo?.SystemInfo?.NodeId != null)
-                {
-                    _nodes[nodeInfo.SystemInfo.NodeId] = nodeInfo;
+                var nodeId = nodeInfo.SystemInfo?.NodeId;
+                if (string.IsNullOrEmpty(nodeId))
+                    continue;
 
-                    _logger.LogInformation("Streamed NodeFullInfo from {NodeId} ({HostName})",
-                        nodeInfo.SystemInfo.NodeId, nodeInfo.SystemInfo.HostName);
-                }
+                await _nodeRepo.UpdateNodeInfo(nodeId, nodeInfo.FromProto());
+                await _registry.UpdateHeartbeatAsync(nodeId);
+
+                _logger.LogInformation(
+                    "Stream update from {NodeId} ({Host})",
+                    nodeId,
+                    nodeInfo.SystemInfo?.HostName);
             }
 
             return new Empty();
         }
 
         /// <summary>
-        /// Получить текущее состояние всех агентов
+        /// RPC для Heartbeat
         /// </summary>
-        public IReadOnlyDictionary<string, NodeFullInfo> GetAllNodes() => _nodes;
+        public override async Task<HeartbeatResponse> Heartbeat(HeartbeatRequest request, ServerCallContext context)
+        {
+            if (string.IsNullOrWhiteSpace(request.NodeId))
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "NodeId is required"));
+
+            await _registry.UpdateHeartbeatAsync(request.NodeId);
+
+            _logger.LogDebug("Heartbeat received from node {NodeId}", request.NodeId);
+
+            return new HeartbeatResponse
+            {
+                ServerTime = Timestamp.FromDateTime(DateTime.UtcNow.ToUniversalTime())
+            };
+        }
     }
 }

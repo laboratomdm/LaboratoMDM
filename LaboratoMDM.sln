@@ -23,6 +23,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LaboratoMDM.Mesh.Protos", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LaboratoMDM.Mesh.Master", "LaboratoMDM.Mesh.Master\LaboratoMDM.Mesh.Master.csproj", "{88BF2EC2-BF01-41EA-90EC-758711942F07}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LaboratoMDM.Mesh.Agent", "LaboratoMDM.Mesh.Agent\LaboratoMDM.Mesh.Agent.csproj", "{47BB10B4-5B84-4E0C-B388-E26374003A4D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		1__policies_tables.sql = 1__policies_tables.sql
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +76,10 @@ Global
 		{88BF2EC2-BF01-41EA-90EC-758711942F07}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{88BF2EC2-BF01-41EA-90EC-758711942F07}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88BF2EC2-BF01-41EA-90EC-758711942F07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{47BB10B4-5B84-4E0C-B388-E26374003A4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{47BB10B4-5B84-4E0C-B388-E26374003A4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{47BB10B4-5B84-4E0C-B388-E26374003A4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{47BB10B4-5B84-4E0C-B388-E26374003A4D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

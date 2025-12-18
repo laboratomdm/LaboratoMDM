@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using LaboratoMDM.Core.Models.Policy;
+using Microsoft.Extensions.Logging;
 using System.Xml.Linq;
 
 namespace LaboratoMDM.PolicyEngine.Implementations
@@ -9,48 +10,70 @@ namespace LaboratoMDM.PolicyEngine.Implementations
         private static readonly XNamespace Ns =
             "http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions";
 
-        private readonly string _policyDefinitionsPath;
         private readonly Dictionary<string, PolicyDefinition> _cache =
             new(StringComparer.OrdinalIgnoreCase);
 
-        public AdmxPolicyProvider(string policyDefinitionsPath)
-        {
-            if (!Directory.Exists(policyDefinitionsPath))
-                throw new DirectoryNotFoundException(policyDefinitionsPath);
+        private readonly ILogger<AdmxPolicyProvider> _logger;
 
-            _policyDefinitionsPath = policyDefinitionsPath;
+        /// <summary>
+        /// Путь к папке с ADMX файлами
+        /// </summary>
+        public string PolicyDefinitionsPath { get; }
+
+        public AdmxPolicyProvider(string policyDefinitionsPath, ILogger<AdmxPolicyProvider> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            if (!Directory.Exists(policyDefinitionsPath))
+            {
+                _logger.LogError("ADMX folder not found: {Path}", policyDefinitionsPath);
+                throw new DirectoryNotFoundException($"ADMX folder not found: {policyDefinitionsPath}");
+            }
+
+            PolicyDefinitionsPath = policyDefinitionsPath;
             LoadInternal();
         }
 
-        public IReadOnlyList<PolicyDefinition> LoadPolicies() =>
-            _cache.Values.ToList();
+        public IReadOnlyList<PolicyDefinition> LoadPolicies() => _cache.Values.ToList();
 
         public PolicyDefinition? FindPolicy(string name) =>
             _cache.TryGetValue(name, out var p) ? p : null;
 
         private void LoadInternal()
         {
-            foreach (var file in Directory.EnumerateFiles(_policyDefinitionsPath, "*.admx"))
+            _logger.LogInformation("Starting to load ADMX policies from {Path}", PolicyDefinitionsPath);
+
+            int totalLoaded = 0;
+
+            foreach (var file in Directory.EnumerateFiles(PolicyDefinitionsPath, "*.admx"))
             {
-                TryLoadFile(file);
+                totalLoaded += TryLoadFile(file);
             }
+
+            _logger.LogInformation("Finished loading ADMX policies. Total loaded: {Count}", totalLoaded);
         }
 
-        private void TryLoadFile(string file)
+        private int TryLoadFile(string file)
         {
+            int loadedCount = 0;
+
             try
             {
                 var doc = XDocument.Load(file);
-
                 foreach (var p in doc.Descendants(Ns + "policy"))
                 {
                     var name = (string?)p.Attribute("name");
                     if (string.IsNullOrWhiteSpace(name))
                         continue;
 
-                    var scope = ((string?)p.Attribute("class")) == "Machine"
-                        ? PolicyScope.Machine
-                        : PolicyScope.User;
+                    var classAttr = ((string?)p.Attribute("class"))?.Trim();
+                    PolicyScope scope = classAttr switch
+                    {
+                        "Machine" => PolicyScope.Machine,
+                        "User" => PolicyScope.User,
+                        "Both" => PolicyScope.Both,
+                        _ => PolicyScope.None
+                    };
 
                     var policy = new PolicyDefinition
                     {
@@ -61,16 +84,28 @@ namespace LaboratoMDM.PolicyEngine.Implementations
                         EnabledValue = ReadDecimal(p, "enabledValue"),
                         DisabledValue = ReadDecimal(p, "disabledValue"),
                         SupportedOnRef = p.Element(Ns + "supportedOn")?.Attribute("ref")?.Value,
-                        ListKeys = ReadListKeys(p)
+                        ListKeys = ReadListKeys(p),
+                        RequiredCapabilities = ReadCapabilities(p),
+                        RequiredHardware = ReadHardwareRequirements(p)
                     };
 
-                    _cache.TryAdd(policy.Name, policy);
+                    if (_cache.TryAdd(policy.Name, policy))
+                    {
+                        loadedCount++;
+                        _logger.LogDebug("Loaded policy: {Name} ({Scope})", policy.Name, policy.Scope);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Policy {Name} already exists in cache. Skipping.", policy.Name);
+                    }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // битые или несовместимые ADMX намеренно игнорируются
+                _logger.LogError(ex, "Failed to load ADMX file '{File}'", file);
             }
+
+            return loadedCount;
         }
 
         private static int? ReadDecimal(XElement policy, string element)
@@ -87,6 +122,24 @@ namespace LaboratoMDM.PolicyEngine.Implementations
             return policy.Descendants(Ns + "list")
                          .Select(l => (string?)l.Attribute("key"))
                          .Where(k => !string.IsNullOrWhiteSpace(k))
+                         .Cast<string>()
+                         .ToList();
+        }
+
+        private static IReadOnlyList<string> ReadCapabilities(XElement policy)
+        {
+            return policy.Descendants(Ns + "capability")
+                         .Select(c => (string?)c.Attribute("name"))
+                         .Where(n => !string.IsNullOrWhiteSpace(n))
+                         .Cast<string>()
+                         .ToList();
+        }
+
+        private static IReadOnlyList<string> ReadHardwareRequirements(XElement policy)
+        {
+            return policy.Descendants(Ns + "hardwareRequirement")
+                         .Select(h => (string?)h.Attribute("name"))
+                         .Where(n => !string.IsNullOrWhiteSpace(n))
                          .Cast<string>()
                          .ToList();
         }
