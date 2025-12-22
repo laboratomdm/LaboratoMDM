@@ -131,4 +131,31 @@ namespace LaboratoMDM.PolicyEngine.Domain
         public string HardwareFeature { get; set; } = string.Empty;
     }
 
+    public static class PolicyDefinitionMapper
+    {
+        public static PolicyEntity ToEntity(PolicyDefinition def)
+        {
+            return new PolicyEntity
+            {
+                Name = def.Name,
+                Scope = def.Scope,
+                RegistryKey = def.RegistryKey,
+                ValueName = def.ValueName,
+                EnabledValue = def.EnabledValue,
+                DisabledValue = def.DisabledValue,
+                SupportedOnRef = def.SupportedOnRef,
+                Hash = ComputeStableHash(def)
+            };
+        }
+
+        private static string ComputeStableHash(PolicyDefinition def)
+        {
+            var raw =
+                $"{def.Name}|{def.Scope}|{def.RegistryKey}|{def.ValueName}";
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            return Convert.ToHexString(
+                sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw)));
+        }
+    }
+
 }

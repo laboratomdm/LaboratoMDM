@@ -166,5 +166,32 @@ namespace LaboratoMDM.PolicyEngine.Persistence
                 throw;
             }
         }
+
+        public async Task<IReadOnlyList<AdmxSnapshot>> LoadAllSnapshots()
+        {
+            // Получаем все ADMX-файлы
+            using var cmd = _conn.CreateCommand("""
+                SELECT * FROM AdmxFiles
+            """);
+
+            var snapshots = new List<AdmxSnapshot>();
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            var admxFiles = new List<AdmxFileEntity>();
+
+            while (await reader.ReadAsync())
+            {
+                admxFiles.Add(_admxMapper.Map(reader));
+            }
+
+            // Для каждого ADMX файла создаём полный snapshot
+            foreach (var file in admxFiles)
+            {
+                var snapshot = await LoadSnapshot(file.Id);
+                snapshots.Add(snapshot);
+            }
+
+            return snapshots;
+        }
     }
 }

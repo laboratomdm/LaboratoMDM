@@ -1,0 +1,340 @@
+﻿syntax = "proto3";
+
+package laborato.mesh.operator.v1;
+
+option csharp_namespace = "LaboratoMDM.Mesh.Master.Grpc.Operator.V1";
+
+// ENUMS
+
+enum PolicyScope {
+  POLICY_SCOPE_NONE = 0;
+  POLICY_SCOPE_USER = 1;
+  POLICY_SCOPE_MACHINE = 2;
+  POLICY_SCOPE_BOTH = 3;
+}
+
+enum PolicyDesiredState {
+  POLICY_DESIRED_STATE_UNSPECIFIED = 0;
+  POLICY_DESIRED_STATE_ENABLED = 1;
+  POLICY_DESIRED_STATE_DISABLED = 2;
+}
+
+enum PolicySource {
+  POLICY_SOURCE_UNSPECIFIED = 0;
+  POLICY_SOURCE_GLOBAL = 1;
+  POLICY_SOURCE_AGENT = 2;
+  POLICY_SOURCE_USER = 3;
+}
+
+enum UserAccountType {
+  USER_ACCOUNT_TYPE_UNSPECIFIED = 0;
+  USER_ACCOUNT_TYPE_LOCAL = 1;
+  USER_ACCOUNT_TYPE_SYSTEM = 2;
+}
+
+// AGENTS
+
+service AgentService {
+  rpc ListAgents (ListAgentsRequest)
+      returns (ListAgentsResponse);
+
+  rpc GetAgent (GetAgentRequest)
+      returns (AgentDetails);
+}
+
+message ListAgentsRequest {}
+
+message GetAgentRequest {
+  string agent_id = 1;
+}
+
+message ListAgentsResponse {
+  repeated AgentSummary agents = 1;
+}
+
+message AgentSummary {
+  string agent_id = 1;
+  string host_name = 2;
+  string ip_address = 3;
+  bool is_online = 4;
+  int64 last_heartbeat_unix = 5;
+}
+
+message AgentDetails {
+  string agent_id = 1;
+  string host_name = 2;
+  string ip_address = 3;
+
+  bool is_online = 4;
+  int64 last_heartbeat_unix = 5;
+
+  NodeFullInfo node_info = 6;
+}
+
+
+
+// USERS
+
+service UserService {
+  rpc ListUsersForAgent (ListUsersForAgentRequest)
+      returns (ListUsersForAgentResponse);
+}
+
+message ListUsersForAgentRequest {
+  string agent_id = 1;
+}
+
+message ListUsersForAgentResponse {
+  repeated UserInfo users = 1;
+}
+
+message UserInfo {
+  string name = 1;
+  string sid = 2;
+
+  UserAccountType account_type = 3;
+  bool is_enabled = 4;
+  int64 last_logon_unix = 5;
+
+  repeated string groups = 6;
+}
+
+
+// ADMX FILES
+
+service AdmxService {
+  rpc ListAdmxFiles (ListAdmxFilesRequest)
+      returns (ListAdmxFilesResponse);
+
+  rpc GetAdmxSnapshot (GetAdmxSnapshotRequest)
+      returns (AdmxSnapshot);
+
+  rpc ImportAdmxZip (ImportAdmxZipRequest)
+      returns (ImportAdmxZipResponse);
+}
+
+message ImportAdmxZipRequest {
+  bytes zip_content = 1; // сам zip-файл
+}
+
+message ImportAdmxZipResponse {
+  bool success = 1;
+  string message = 2; // при ошибке или для логов
+}
+
+message ListAdmxFilesRequest {}
+
+message ListAdmxFilesResponse {
+  repeated AdmxFile files = 1;
+}
+
+message GetAdmxSnapshotRequest {
+  string file_hash = 1;
+}
+
+message AdmxFile {
+  string file_name = 1;
+  string file_hash = 2;
+  int64 loaded_at_unix = 3;
+}
+
+message PolicyCategory {
+  string name = 1;
+  string display_name = 2;
+  string explain_text = 3;
+  string parent_category_name = 4;
+}
+
+message PolicyNamespace {
+  string prefix = 1;
+  string namespace = 2;
+}
+
+message AdmxSnapshot {
+  AdmxFile file = 1;
+  repeated PolicyDescriptor policies = 2;
+  repeated PolicyCategory categories = 3;
+  repeated PolicyNamespace namespaces = 4;
+}
+
+
+// POLICY CATALOG
+
+service PolicyCatalogService {
+  rpc ListPolicies (ListPoliciesRequest)
+      returns (ListPoliciesResponse);
+
+  rpc GetPolicy (GetPolicyRequest)
+      returns (PolicyDescriptor);
+}
+
+message ListPoliciesRequest {
+  string admx_file_hash = 1;
+}
+
+message ListPoliciesResponse {
+  repeated PolicyDescriptor policies = 1;
+}
+
+message GetPolicyRequest {
+  string policy_hash = 1;
+}
+
+message PolicyDescriptor {
+  string policy_hash = 1;
+  string name = 2;
+
+  PolicyScope scope = 3;
+
+  string registry_key = 4;
+  string value_name = 5;
+
+  int32 enabled_value = 6;
+  int32 disabled_value = 7;
+
+  string supported_on_ref = 8;
+  string parent_category = 9;
+
+  repeated PolicyElement elements = 10;
+  repeated string required_capabilities = 11;
+  repeated string required_hardware = 12;
+
+  repeated string admx_file_hashes = 13;
+}
+
+message PolicyElement {
+  string id_name = 1;
+  string type = 2;
+
+  string value_name = 3;
+  int32 max_length = 4;
+  bool required = 5;
+
+  string client_extension = 6;
+}
+
+// POLICY ASSIGNMENT
+
+service PolicyAssignmentService {
+  rpc AssignPolicy (AssignPolicyRequest)
+      returns (AssignPolicyResponse);
+
+  rpc RemovePolicy (RemovePolicyRequest)
+      returns (RemovePolicyResponse);
+}
+
+message AssignPolicyRequest {
+  string policy_hash = 1;
+  PolicyDesiredState desired_state = 2;
+  PolicyTarget target = 3;
+  PolicyValueOverride override = 4;
+}
+
+message AssignPolicyResponse {}
+
+message RemovePolicyRequest {
+  string policy_hash = 1;
+  PolicyTarget target = 2;
+}
+
+message RemovePolicyResponse {}
+
+message PolicyTarget {
+  oneof target {
+    GlobalTarget global = 1;
+    AgentTarget agent = 2;
+    UserTarget user = 3;
+  }
+}
+
+message GlobalTarget {}
+
+message AgentTarget {
+  string agent_id = 1;
+}
+
+message UserTarget {
+  string agent_id = 1;
+  string user_sid = 2;
+}
+
+message PolicyValueOverride {
+  oneof value {
+    int32 dword = 1;
+    string string_value = 2;
+  }
+}
+
+
+// POLICY STATE / AUDIT
+
+service PolicyStateService {
+  rpc GetEffectivePolicies (GetEffectivePoliciesRequest)
+      returns (GetEffectivePoliciesResponse);
+
+  rpc GetAssignments (GetAssignmentsRequest)
+      returns (GetAssignmentsResponse);
+}
+
+message GetEffectivePoliciesRequest {
+  PolicyTarget target = 1;
+}
+
+message GetEffectivePoliciesResponse {
+  repeated EffectivePolicy policies = 1;
+}
+
+message EffectivePolicy {
+  string policy_hash = 1;
+  PolicyDesiredState desired_state = 2;
+  PolicyValueOverride effective_value = 3;
+  PolicySource source = 4;
+}
+
+message GetAssignmentsRequest {
+  PolicyTarget target = 1;
+}
+
+message GetAssignmentsResponse {
+  repeated PolicyAssignment assignments = 1;
+}
+
+message PolicyAssignment {
+  string policy_hash = 1;
+  PolicyDesiredState desired_state = 2;
+  PolicyValueOverride override = 3;
+  PolicyTarget target = 4;
+}
+
+// SYSTEM INFO (минимум, у меня шире, но это потом)
+
+message NodeFullInfo {
+  NodeSystemInfo system_info = 1;
+
+  int64 last_boot_time_unix = 2;
+  string os_build = 3;
+  bool is_domain_joined = 4;
+  string antivirus_status = 5;
+  string time_zone = 6;
+  string manufacturer = 7;
+  string model = 8;
+  string firmware_version = 9;
+
+  bool is_online = 10;
+}
+
+message NodeSystemInfo {
+  string host_name = 1;
+  string os_version = 2;
+
+  string cpu = 3;
+  int32 ram_gb = 4;
+
+  repeated string disks = 5;
+  repeated string gpu = 6;
+
+  repeated string ip_addresses = 7;
+  repeated string mac_addresses = 8;
+
+  string motherboard = 9;
+}

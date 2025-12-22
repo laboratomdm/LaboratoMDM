@@ -1,13 +1,25 @@
 ﻿using LaboratoMDM.Mesh.Master.Grpc;
+using LaboratoMDM.Mesh.Master.Grpc.Services;
 using LaboratoMDM.Mesh.Master.Repositories;
 using LaboratoMDM.Mesh.Master.Services;
+using LaboratoMDM.PolicyEngine.Domain;
+using LaboratoMDM.PolicyEngine.Persistence;
+using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
+using LaboratoMDM.PolicyEngine.Persistence.Mapping;
+using LaboratoMDM.PolicyEngine.Persistence.Schema;
+using LaboratoMDM.PolicyEngine.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
+string dbFile = "master.db";
+string migrationsPath = @"C:\Users\Ivan\source\repos\LaboratoMDM";
+
+// Создаем файл базы, если не существует
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
@@ -16,8 +28,38 @@ var host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<IAgentRegistry, RedisAgentRegistry>();
         services.AddSingleton<INodeInfoRepository, RedisNodeInfoRepository>();
+
         services.AddSingleton<MasterService>();
+        services.AddSingleton<AgentServiceImpl>();
+        services.AddSingleton<UserServiceImpl>();
+        services.AddSingleton<AdmxServiceImpl>();
+
         services.AddGrpc();
+
+        services.AddSingleton<SqliteConnection>(sp =>
+        {
+            var conn = new SqliteConnection($"Data Source={dbFile}");
+            conn.Open();
+            return conn;
+        });
+
+        // Mappers
+        services.AddSingleton<IEntityMapper<AdmxFileEntity>, AdmxFileEntityMapper>();
+        services.AddSingleton<IEntityMapper<PolicyNamespaceEntity>, PolicyNamespaceEntityMapper>();
+        services.AddSingleton<IEntityMapper<PolicyCategoryEntity>, PolicyCategoryEntityMapper>();
+        services.AddSingleton<IEntityMapper<PolicyEntity>, PolicyEntityMapper>();
+
+        // Repositories
+        services.AddSingleton<IAdmxRepository, AdmxRepository>();
+        services.AddSingleton<IPolicyMetadataRepository, PolicyMetadataRepository>();
+        services.AddSingleton<IPolicyRepository, PolicyRepository>();
+
+        services.AddSingleton<IAdmxImportService, AdmxImportService>();
+        services.AddSingleton<IAdmxQueryService, AdmxQueryService>();
+        services.AddSingleton<IPolicyQueryService, PolicyQueryService>();
+        services.AddSingleton<IPolicyMetadataService, PolicyMetadataService>();
+
+        services.AddSingleton<IAdmxFolderImporter, AdmxFolderImporter>();
     })
     .ConfigureLogging(logging =>
     {
@@ -40,10 +82,16 @@ var host = Host.CreateDefaultBuilder(args)
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapGrpcService<MasterService>();
+                endpoints.MapGrpcService<AgentServiceImpl>();
+                endpoints.MapGrpcService<UserServiceImpl>();
+                endpoints.MapGrpcService<AdmxServiceImpl>();
             });
         });
     })
     .Build();
 
-await host.RunAsync();
+// Инициализация базы данных перед стартом хоста
+var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitializer");
+await DatabaseInitializer.InitializeAsync(dbFile, migrationsPath, logger);
 
+await host.RunAsync();

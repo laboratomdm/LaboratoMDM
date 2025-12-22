@@ -1,0 +1,11 @@
+﻿namespace LaboratoMDM.PolicyEngine.Services;
+public interface IAdmxFolderImporter
+{
+    Task ImportFileAsync(
+        string admxFilePath,
+        CancellationToken ct = default);
+
+    Task ImportDirectoryAsync(
+        string admxDirectoryPath,
+        CancellationToken ct = default);
+}

@@ -14,8 +14,6 @@ public class PolicyRepositoryIntegrationTests(SqliteFileSchemaFixture fixture)
     [Fact]
     public async Task CreateAndGetPolicy_FromFileSchema()
     {
-        
-
         var policy = new PolicyEntity
         {
             Name = "TestPolicyFromFile",

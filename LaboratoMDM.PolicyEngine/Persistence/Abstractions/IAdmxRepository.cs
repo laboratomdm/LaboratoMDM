@@ -23,6 +23,13 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Abstractions
         Task<AdmxSnapshot> LoadSnapshot(int admxFileId);
 
         /// <summary>
+        /// Возвращает все политики, категории и namespaces,
+        /// загруженные из всех ADMX файлов
+        /// </summary>
+        /// <returns></returns>
+        Task<IReadOnlyList<AdmxSnapshot>> LoadAllSnapshots();
+
+        /// <summary>
         /// Удаляет ADMX файл и всё связанное (CASCADE)
         /// </summary>
         Task Delete(int admxFileId);

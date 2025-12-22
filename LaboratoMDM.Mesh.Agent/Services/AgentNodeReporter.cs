@@ -1,7 +1,9 @@
 ﻿using Grpc.Net.Client;
 using Laborato.Mesh;
+using LaboratoMDM.Mesh.Agent.Options;
 using LaboratoMDM.NodeEngine;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using static LaboratoMDM.Mesh.Protos.Mapper.NodeFullInfoMapper;
 
 namespace LaboratoMDM.Agent.Services
@@ -10,15 +12,18 @@ namespace LaboratoMDM.Agent.Services
     {
         private readonly INodeFullInfoCollector _collector;
         private readonly MeshService.MeshServiceClient _client;
+        private readonly IOptions<AgentOptions> _agentOptions;
         private readonly ILogger<AgentNodeReporter> _logger;
 
         public AgentNodeReporter(
             INodeFullInfoCollector collector,
             GrpcChannel channel,
+            IOptions<AgentOptions> agentOptions,
             ILogger<AgentNodeReporter> logger)
         {
             _collector = collector;
             _client = new MeshService.MeshServiceClient(channel);
+            _agentOptions = agentOptions;
             _logger = logger;
         }
 
@@ -26,6 +31,7 @@ namespace LaboratoMDM.Agent.Services
         {
             _logger.LogInformation("Collecting NodeFullInfo...");
             Core.Models.Node.NodeFullInfo info = _collector.Collect();
+            info.NodeId = _agentOptions.Value.Id;
 
             var proto = info.ToProto();
 
@@ -42,7 +48,9 @@ namespace LaboratoMDM.Agent.Services
             while (!ct.IsCancellationRequested)
             {
                 var info = _collector.Collect();
-                await call.RequestStream.WriteAsync(info.ToProto());
+                info.NodeId = _agentOptions.Value.Id;
+
+                await call.RequestStream.WriteAsync(info.ToProto(), ct);
 
                 await Task.Delay(TimeSpan.FromMinutes(1), ct);
             }
