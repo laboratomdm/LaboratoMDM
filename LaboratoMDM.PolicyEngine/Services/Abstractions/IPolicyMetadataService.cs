@@ -1,6 +1,6 @@
 ﻿using LaboratoMDM.PolicyEngine.Domain;
 
-namespace LaboratoMDM.PolicyEngine.Services
+namespace LaboratoMDM.PolicyEngine.Services.Abstractions
 {
     public interface IPolicyMetadataService
     {

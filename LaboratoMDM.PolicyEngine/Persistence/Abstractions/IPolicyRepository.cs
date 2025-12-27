@@ -16,14 +16,36 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Abstractions
         Task<PolicyEntity?> GetByHash(string policyHash);
 
         /// <summary>
+        /// Возвращает политики по списку хэшей.
+        /// </summary>
+        /// <param name="hashes"></param>
+        /// <returns></returns>
+        Task<IReadOnlyList<PolicyEntity>> GetByHashes(IReadOnlyCollection<string> hashes);
+
+        /// <summary>
         /// Создаёт уникальную политику, если её ещё нет
         /// </summary>
         Task<PolicyEntity> CreateIfNotExists(PolicyEntity policy);
 
         /// <summary>
+        /// Создаёт уникальную политику, если её ещё нет (Режим batch.)
+        /// </summary>
+        /// <param name="policies"></param>
+        /// <returns></returns>
+        Task CreatePoliciesBatch(IReadOnlyList<PolicyEntity> policies);
+
+        /// <summary>
         /// Связывает политику с ADMX файлом
         /// </summary>
         Task LinkPolicyToAdmx(int policyId, int admxFileId);
+
+        /// <summary>
+        /// Связывает политику с ADMX файлом (РЕЖИМ BATCH)
+        /// </summary>
+        /// <param name="admxFileId"></param>
+        /// <param name="policyIds"></param>
+        /// <returns></returns>
+        Task LinkPoliciesToAdmxBatch(int admxFileId, IReadOnlyList<int> policyIds);
 
         /// <summary>
         /// Возвращает все политики,

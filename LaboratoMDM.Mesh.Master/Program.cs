@@ -1,4 +1,5 @@
-﻿using LaboratoMDM.Mesh.Master.Grpc;
+﻿using LaboratoMDM.Core.Models.Policy;
+using LaboratoMDM.Mesh.Master.Grpc;
 using LaboratoMDM.Mesh.Master.Grpc.Services;
 using LaboratoMDM.Mesh.Master.Repositories;
 using LaboratoMDM.Mesh.Master.Services;
@@ -8,6 +9,7 @@ using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
 using LaboratoMDM.PolicyEngine.Persistence.Mapping;
 using LaboratoMDM.PolicyEngine.Persistence.Schema;
 using LaboratoMDM.PolicyEngine.Services;
+using LaboratoMDM.PolicyEngine.Services.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.Sqlite;
@@ -48,18 +50,26 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IEntityMapper<PolicyNamespaceEntity>, PolicyNamespaceEntityMapper>();
         services.AddSingleton<IEntityMapper<PolicyCategoryEntity>, PolicyCategoryEntityMapper>();
         services.AddSingleton<IEntityMapper<PolicyEntity>, PolicyEntityMapper>();
+        services.AddSingleton<IEntityMapper<Translation>, TranslationEntityMapper>();
 
         // Repositories
         services.AddSingleton<IAdmxRepository, AdmxRepository>();
         services.AddSingleton<IPolicyMetadataRepository, PolicyMetadataRepository>();
         services.AddSingleton<IPolicyRepository, PolicyRepository>();
+        services.AddSingleton<ITranslationRepository, TranslationRepository>();
+        services.AddSingleton<IAdmlSnapshotWriter, AdmlSnapshotWriter>();
 
         services.AddSingleton<IAdmxImportService, AdmxImportService>();
         services.AddSingleton<IAdmxQueryService, AdmxQueryService>();
         services.AddSingleton<IPolicyQueryService, PolicyQueryService>();
         services.AddSingleton<IPolicyMetadataService, PolicyMetadataService>();
 
+        services.AddSingleton<ITranslationService, TranslationService>();
+        services.AddSingleton<IAdmlImportService, AdmlImportService>();
+        services.AddSingleton<IAdmlPresentationImportService, AdmlPresentationImportService>();
+
         services.AddSingleton<IAdmxFolderImporter, AdmxFolderImporter>();
+        services.AddSingleton<IAdmlFolderImporter, AdmlFolderImporter>();
     })
     .ConfigureLogging(logging =>
     {

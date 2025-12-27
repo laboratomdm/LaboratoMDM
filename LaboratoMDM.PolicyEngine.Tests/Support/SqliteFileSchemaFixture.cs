@@ -10,7 +10,7 @@ public class SqliteFileSchemaFixture : IAsyncLifetime
     public SqliteFileSchemaFixture()
     {
         // путь жестко задаем
-        _schemaFilePath = @"C:\Users\Ivan\source\repos\LaboratoMDM\1__policies_tables.sql";
+        _schemaFilePath = @"C:\Users\Ivan\source\repos\LaboratoMDM\4__presentation_tables.sql";
         if (!File.Exists(_schemaFilePath))
             throw new FileNotFoundException("Schema file not found", _schemaFilePath);
     }

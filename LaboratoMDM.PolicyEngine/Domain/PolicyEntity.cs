@@ -1,8 +1,6 @@
 ﻿#nullable enable
 
 using LaboratoMDM.Core.Models.Policy;
-using System;
-using System.Collections.Generic;
 
 namespace LaboratoMDM.PolicyEngine.Domain
 {
@@ -13,6 +11,16 @@ namespace LaboratoMDM.PolicyEngine.Domain
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Указатель на локализованное название политики.
+        /// </summary>
+        public string? DisplayName { get; init; }
+
+        /// <summary>
+        /// Указатель на локализванное описание политики.
+        /// </summary>
+        public string? ExplainText { get; init; }
 
         /// <summary>
         /// Scope хранится в базе как строка ("None", "User", "Machine", "Both")
@@ -57,6 +65,11 @@ namespace LaboratoMDM.PolicyEngine.Domain
         public string? ParentCategory { get; set; }
 
         /// <summary>
+        /// Указатель на идентификатор представления политики
+        /// </summary>
+        public string? PresentationRef { get; set; }
+
+        /// <summary>
         /// Элементы политики (text, checkbox, list и т.д.)
         /// </summary>
         public List<PolicyElementEntity> Elements { get; set; } = new();
@@ -93,7 +106,7 @@ namespace LaboratoMDM.PolicyEngine.Domain
         /// <summary>
         /// Имя значения в реестре (если применимо)
         /// </summary>
-        public string? ValueName { get; set; }
+        public string ValueName { get; set; } = string.Empty;
 
         /// <summary>
         /// Максимальная длина (для text/combobox)
@@ -131,20 +144,42 @@ namespace LaboratoMDM.PolicyEngine.Domain
         public string HardwareFeature { get; set; } = string.Empty;
     }
 
-    public static class PolicyDefinitionMapper
+    public static class PolicyMapper
     {
+        #region PolicyDefinition -> PolicyEntity
+
         public static PolicyEntity ToEntity(PolicyDefinition def)
         {
             return new PolicyEntity
             {
                 Name = def.Name,
+                DisplayName = def.DisplayName,
+                ExplainText = def.ExplainText,
                 Scope = def.Scope,
                 RegistryKey = def.RegistryKey,
                 ValueName = def.ValueName,
                 EnabledValue = def.EnabledValue,
                 DisabledValue = def.DisabledValue,
                 SupportedOnRef = def.SupportedOnRef,
-                Hash = ComputeStableHash(def)
+                ParentCategory = def.ParentCategoryRef,
+                PresentationRef = def.PresentationRef,
+                Hash = ComputeStableHash(def),
+                Elements = def.Elements.Select(ToEntity).ToList(),
+                Capabilities = def.RequiredCapabilities.Select(cap => new PolicyCapabilityEntity { Capability = cap }).ToList(),
+                HardwareRequirements = def.RequiredHardware.Select(hw => new PolicyHardwareRequirementEntity { HardwareFeature = hw }).ToList()
+            };
+        }
+
+        private static PolicyElementEntity ToEntity(PolicyElementDefinition def)
+        {
+            return new PolicyElementEntity
+            {
+                Type = def.Type,
+                IdName = def.IdName,
+                ValueName = def.ValueName,
+                MaxLength = def.MaxLength,
+                Required = def.Required,
+                ClientExtension = def.ClientExtension
             };
         }
 
@@ -156,6 +191,46 @@ namespace LaboratoMDM.PolicyEngine.Domain
             return Convert.ToHexString(
                 sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw)));
         }
-    }
 
+        #endregion
+
+        #region PolicyEntity -> PolicyDefinition
+
+        public static PolicyDefinition ToDefinition(PolicyEntity entity)
+        {
+            return new PolicyDefinition
+            {
+                Name = entity.Name,
+                Scope = entity.Scope,
+                DisplayName = entity.DisplayName,
+                ExplainText = entity.ExplainText,
+                RegistryKey = entity.RegistryKey,
+                ValueName = entity.ValueName,
+                EnabledValue = entity.EnabledValue,
+                DisabledValue = entity.DisabledValue,
+                SupportedOnRef = entity.SupportedOnRef,
+                ParentCategoryRef = entity.ParentCategory,
+                PresentationRef = entity.PresentationRef,
+                Hash = entity.Hash,
+                Elements = entity.Elements.Select(ToDefinition).ToList(),
+                RequiredCapabilities = entity.Capabilities.Select(c => c.Capability).ToList(),
+                RequiredHardware = entity.HardwareRequirements.Select(h => h.HardwareFeature).ToList()
+            };
+        }
+
+        private static PolicyElementDefinition ToDefinition(PolicyElementEntity entity)
+        {
+            return new PolicyElementDefinition
+            {
+                Type = entity.Type,
+                IdName = entity.IdName,
+                ValueName = entity.ValueName,
+                MaxLength = entity.MaxLength,
+                Required = entity.Required,
+                ClientExtension = entity.ClientExtension
+            };
+        }
+
+        #endregion
+    }
 }

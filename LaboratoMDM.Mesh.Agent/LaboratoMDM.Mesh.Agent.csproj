@@ -15,10 +15,14 @@
   <ItemGroup>
     <ProjectReference Include="..\LaboratoMDM.Mesh.Protos\LaboratoMDM.Mesh.Protos.csproj" />
     <ProjectReference Include="..\LaboratoMDM.NodeEngine\LaboratoMDM.NodeEngine.csproj" />
+    <ProjectReference Include="..\LaboratoMDM.PolicyEngine\LaboratoMDM.PolicyEngine.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Database\1__agent_local_tables.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -1,5 +1,6 @@
 ﻿using LaboratoMDM.PolicyEngine.Domain;
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
+using LaboratoMDM.PolicyEngine.Services.Abstractions;
 
 namespace LaboratoMDM.PolicyEngine.Services
 {

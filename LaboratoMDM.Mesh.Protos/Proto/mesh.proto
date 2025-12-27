@@ -5,6 +5,7 @@ import "google/protobuf/timestamp.proto";
 
 package laborato.mesh;
 
+// SYSTEM HEARTBEAT
 message HeartbeatRequest {
     string nodeId = 1;
     google.protobuf.Timestamp timestamp = 2;
@@ -14,6 +15,7 @@ message HeartbeatResponse {
     google.protobuf.Timestamp serverTime = 1;
 }
 
+// NODE INFORMATION
 message NodeSystemInfo {
     string nodeId = 1;
     string hostName = 2;
@@ -49,18 +51,137 @@ message NodeFullInfo {
 }
 
 message NodeInfoRequest {
-    string nodeId = 1; // опционально: если хотим запросить конкретную ноду
+    string nodeId = 1; // optional
 }
 
 message NodeInfoResponse {
     NodeFullInfo info = 1;
 }
 
+// POLICY DEFINITIONS
+enum PolicyScope {
+    POLICY_SCOPE_NONE = 0;
+    POLICY_SCOPE_USER = 1;
+    POLICY_SCOPE_MACHINE = 2;
+    POLICY_SCOPE_BOTH = 3;
+}
+
+message PolicyElement {
+    string id_name = 1;
+    string type = 2; // text, checkbox, list, combobox, etc.
+    string value_name = 3;
+    int32 max_length = 4;
+    bool required = 5;
+    string client_extension = 6;
+}
+
+message PolicyDescriptor {
+    string policy_hash = 1;
+    string name = 2;
+    PolicyScope scope = 3;
+    string registry_key = 4;
+    string value_name = 5;
+    int32 enabled_value = 6;
+    int32 disabled_value = 7;
+    string supported_on_ref = 8;
+    string parent_category = 9;
+    repeated PolicyElement elements = 10;
+    repeated string required_capabilities = 11;
+    repeated string required_hardware = 12;
+    repeated string admx_file_hashes = 13;
+    int64 revision = 14; // мастерская ревизия политики
+}
+
+message AdmxFileDescriptor {
+    string file_hash = 1;
+    string file_name = 2;
+    bytes content = 3; // опционально, может быть только хэш для проверки
+    int64 revision = 4;
+}
+
+// POLICY APPLY / REMOVE
+message ApplyPolicyRequest {
+    PolicyDescriptor policy = 1;
+    bool enable = 2;
+
+    oneof target {
+        string userSid = 3;
+        string groupName = 4;
+        bool machineScope = 5;
+    }
+}
+
+message ApplyPolicyResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message RemovePolicyRequest {
+    PolicyDescriptor policy = 1;
+
+    oneof target {
+        string userSid = 2;
+        string groupName = 3;
+        bool machineScope = 4;
+    }
+}
+
+message RemovePolicyResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// POLICY STATE REPORT (AGENT -> MASTER)
+message PolicyStateReportRequest {
+    string agent_id = 1;
+    int64 revision = 2;
+    repeated PolicyStateItem items = 3;
+}
+
+message PolicyStateItem {
+    string policy_hash = 1;
+    PolicyScope scope = 2;
+    string user_sid = 3;
+
+    enum ComplianceState {
+        COMPLIANCE_STATE_UNKNOWN = 0;
+        COMPLIANCE_STATE_APPLIED = 1;
+        COMPLIANCE_STATE_NOT_APPLIED = 2;
+        COMPLIANCE_STATE_DRIFTED = 3;
+    }
+
+    ComplianceState state = 4;
+    string actual_value = 5; // optional: value from registry or system
+}
+
+// POLICY / ADMX SYNCHRONIZATION
+message SyncRequest {
+    string agent_id = 1;
+    int64 last_known_revision = 2; // последний ревизионный номер, известный агенту
+}
+
+message SyncResponse {
+    int64 current_master_revision = 1; // текущая ревизия мастера
+    repeated PolicyDescriptor policies = 2;
+    repeated AdmxFileDescriptor admx_files = 3;
+}
+
 service MeshService {
+    // Node information
     rpc SendNodeInfo(NodeFullInfo) returns (google.protobuf.Empty);
     rpc RequestNodeInfo(NodeInfoRequest) returns (NodeInfoResponse);
     rpc StreamNodeInfo(stream NodeFullInfo) returns (google.protobuf.Empty);
 
-    //System Heartbeat
+    // System heartbeat
     rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+    // Policy management
+    rpc ApplyPolicy(ApplyPolicyRequest) returns (ApplyPolicyResponse);
+    rpc RemovePolicy(RemovePolicyRequest) returns (RemovePolicyResponse);
+
+    // Policy state reporting
+    rpc ReportPolicyState(PolicyStateReportRequest) returns (google.protobuf.Empty);
+
+    // Sync policies and ADMX files (MASTER -> AGENT)
+    rpc Sync(SyncRequest) returns (SyncResponse);
 }

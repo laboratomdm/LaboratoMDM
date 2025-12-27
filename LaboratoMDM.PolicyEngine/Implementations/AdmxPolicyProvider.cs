@@ -1,147 +1,244 @@
 ﻿#nullable enable
+using System.Xml.Linq;
 using LaboratoMDM.Core.Models.Policy;
 using Microsoft.Extensions.Logging;
-using System.Xml.Linq;
 
-namespace LaboratoMDM.PolicyEngine.Implementations
+namespace LaboratoMDM.PolicyEngine.Implementations;
+
+internal sealed class QNameResolver
 {
-    public sealed class AdmxPolicyProvider : IPolicyProvider
+    private readonly Dictionary<string, string> _prefixes;
+
+    public QNameResolver(IEnumerable<PolicyNamespaceDefinition> namespaces)
     {
-        private static readonly XNamespace Ns =
-            "http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions";
+        _prefixes = namespaces.ToDictionary(
+            n => n.Prefix,
+            n => n.Namespace,
+            StringComparer.OrdinalIgnoreCase);
+    }
 
-        private readonly Dictionary<string, PolicyDefinition> _cache =
-            new(StringComparer.OrdinalIgnoreCase);
+    public (string Namespace, string Name) Resolve(string qname)
+    {
+        var parts = qname.Split(':', 2);
+        if (parts.Length != 2)
+            throw new InvalidOperationException($"Invalid QName: {qname}");
 
-        private readonly ILogger<AdmxPolicyProvider> _logger;
+        if (!_prefixes.TryGetValue(parts[0], out var ns))
+            throw new InvalidOperationException($"Unknown namespace prefix: {parts[0]}");
 
-        /// <summary>
-        /// Путь к папке с ADMX файлами
-        /// </summary>
-        public string PolicyDefinitionsPath { get; }
+        return (ns, parts[1]);
+    }
+}
 
-        public AdmxPolicyProvider(string policyDefinitionsPath, ILogger<AdmxPolicyProvider> logger)
+public sealed class AdmxPolicyProvider : IPolicyProvider
+{
+    private static readonly XNamespace Ns =
+        "http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions";
+
+    private readonly ILogger _logger;
+    private readonly string _admxFilePath;
+
+    private readonly Dictionary<string, PolicyDefinition> _policies =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyList<PolicyNamespaceDefinition> Namespaces { get; private set; } = [];
+    public IReadOnlyList<PolicyCategoryDefinition> Categories { get; private set; } = [];
+    public Dictionary<string, SupportedOnDefinition> SupportedOnDefinitions { get; private set; } = [];
+
+    public AdmxPolicyProvider(string admxFilePath, ILogger logger)
+    {
+        _admxFilePath = admxFilePath;
+        _logger = logger;
+
+        LoadInternal();
+    }
+
+    public IReadOnlyList<PolicyDefinition> LoadPolicies() =>
+        _policies.Values.ToList();
+
+    public PolicyDefinition? FindPolicy(string name) =>
+        _policies.TryGetValue(name, out var p) ? p : null;
+
+    private void LoadInternal()
+    {
+        _logger.LogInformation("Loading ADMX file {File}", _admxFilePath);
+
+        var doc = XDocument.Load(_admxFilePath);
+
+        Namespaces = ParseNamespaces(doc);
+        var resolver = new QNameResolver(Namespaces);
+
+        Categories = ParseCategories(doc);
+        SupportedOnDefinitions = ParseSupportedOn(doc);
+
+        foreach (var policy in ParsePolicies(doc, resolver))
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-            if (!Directory.Exists(policyDefinitionsPath))
+            if (!_policies.TryAdd(policy.Name, policy))
             {
-                _logger.LogError("ADMX folder not found: {Path}", policyDefinitionsPath);
-                throw new DirectoryNotFoundException($"ADMX folder not found: {policyDefinitionsPath}");
+                _logger.LogWarning(
+                    "Duplicate policy {Name} in {File}",
+                    policy.Name,
+                    _admxFilePath);
             }
-
-            PolicyDefinitionsPath = policyDefinitionsPath;
-            LoadInternal();
         }
+    }
+    private static IReadOnlyList<PolicyNamespaceDefinition> ParseNamespaces(XDocument doc)
+    {
+        var root = doc.Descendants(Ns + "policyNamespaces").SingleOrDefault();
+        if (root == null)
+            return [];
 
-        public IReadOnlyList<PolicyDefinition> LoadPolicies() => _cache.Values.ToList();
-
-        public PolicyDefinition? FindPolicy(string name) =>
-            _cache.TryGetValue(name, out var p) ? p : null;
-
-        private void LoadInternal()
-        {
-            _logger.LogInformation("Starting to load ADMX policies from {Path}", PolicyDefinitionsPath);
-
-            int totalLoaded = 0;
-
-            foreach (var file in Directory.EnumerateFiles(PolicyDefinitionsPath, "*.admx"))
+        return root.Elements()
+            .Select(e => new PolicyNamespaceDefinition
             {
-                totalLoaded += TryLoadFile(file);
-            }
+                Prefix = (string)e.Attribute("prefix")!,
+                Namespace = (string)e.Attribute("namespace")!,
+                IsTarget = e.Name.LocalName == "target"
+            })
+            .ToList();
+    }
 
-            _logger.LogInformation("Finished loading ADMX policies. Total loaded: {Count}", totalLoaded);
-        }
-
-        private int TryLoadFile(string file)
-        {
-            int loadedCount = 0;
-
-            try
+    private static IReadOnlyList<PolicyCategoryDefinition> ParseCategories(XDocument doc)
+    {
+        return doc.Descendants(Ns + "category")
+            .Select(c => new PolicyCategoryDefinition
             {
-                var doc = XDocument.Load(file);
-                foreach (var p in doc.Descendants(Ns + "policy"))
+                Name = (string)c.Attribute("name")!,
+                ParentCategoryRef =
+                    c.Element(Ns + "parentCategory")?.Attribute("ref")?.Value,
+                DisplayName =
+                    (string?)c.Attribute("displayName") ?? string.Empty,
+                ExplainText =
+                    c.Element(Ns + "explainText")?.Value?.Trim()
+            })
+            .ToList();
+    }
+
+    private static Dictionary<string, SupportedOnDefinition> ParseSupportedOn(XDocument doc)
+    {
+        var dict = new Dictionary<string, SupportedOnDefinition>();
+
+        var defs = doc.Descendants(Ns + "supportedOn")
+            .Descendants(Ns + "definition");
+
+        foreach (var d in defs)
+        {
+            var name = (string)d.Attribute("name")!;
+            var exprRoot = d.Elements().FirstOrDefault();
+
+            if (exprRoot != null)
+            {
+                dict[name] = new SupportedOnDefinition
                 {
-                    var name = (string?)p.Attribute("name");
-                    if (string.IsNullOrWhiteSpace(name))
-                        continue;
+                    Name = name,
+                    RootExpression = ParseSupportedExpression(exprRoot)
+                };
+            }
+        }
 
-                    var classAttr = ((string?)p.Attribute("class"))?.Trim();
-                    PolicyScope scope = classAttr switch
+        return dict;
+    }
+
+    private static SupportedOnExpression ParseSupportedExpression(XElement el)
+    {
+        return el.Name.LocalName switch
+        {
+            "and" => new SupportedOnAnd
+            {
+                Items = el.Elements().Select(ParseSupportedExpression).ToList()
+            },
+            "or" => new SupportedOnOr
+            {
+                Items = el.Elements().Select(ParseSupportedExpression).ToList()
+            },
+            "reference" => new SupportedOnReference
+            {
+                Ref = (string)el.Attribute("ref")!
+            },
+            "range" => new SupportedOnRange
+            {
+                Ref = (string)el.Attribute("ref")!,
+                MinVersionIndex = (int?)el.Attribute("minVersionIndex"),
+                MaxVersionIndex = (int?)el.Attribute("maxVersionIndex")
+            },
+            _ => throw new NotSupportedException(el.Name.LocalName)
+        };
+    }
+
+    private static IEnumerable<PolicyDefinition> ParsePolicies(
+        XDocument doc,
+        QNameResolver resolver)
+    {
+        return doc.Descendants(Ns + "policy")
+            .Select(p =>
+            {
+                var classAttr = (string?)p.Attribute("class");
+                var presentationRef = (string?)p.Attribute("presentation");
+                if (presentationRef != null)
+                {
+                    presentationRef = ExtractPresentationRef(presentationRef);
+                }
+
+                var categoryName = p.Elements(Ns + "parentCategory").FirstOrDefault()?.Attribute("ref")?.Value;
+                return new PolicyDefinition
+                {
+                    Name = (string)p.Attribute("name")!,
+                    DisplayName = ExtractStringRef(p.Attribute("displayName")?.Value),
+                    ExplainText = ExtractStringRef(p.Attribute("explainText")?.Value),
+                    Scope = classAttr switch
                     {
-                        "Machine" => PolicyScope.Machine,
                         "User" => PolicyScope.User,
+                        "Machine" => PolicyScope.Machine,
                         "Both" => PolicyScope.Both,
                         _ => PolicyScope.None
-                    };
+                    },
+                    RegistryKey = (string?)p.Attribute("key") ?? string.Empty,
+                    ValueName = (string?)p.Attribute("valueName") ?? string.Empty,
+                    ParentCategoryRef = categoryName,
+                    PresentationRef = presentationRef,
+                    SupportedOnRef =
+                        p.Element(Ns + "supportedOn")?.Attribute("ref")?.Value,
+                    
+                    Elements = ParseElements(p)
+                };
+            });
+    }
 
-                    var policy = new PolicyDefinition
-                    {
-                        Name = name,
-                        Scope = scope,
-                        RegistryKey = (string?)p.Attribute("key") ?? string.Empty,
-                        ValueName = (string?)p.Attribute("valueName") ?? string.Empty,
-                        EnabledValue = ReadDecimal(p, "enabledValue"),
-                        DisabledValue = ReadDecimal(p, "disabledValue"),
-                        SupportedOnRef = p.Element(Ns + "supportedOn")?.Attribute("ref")?.Value,
-                        ListKeys = ReadListKeys(p),
-                        RequiredCapabilities = ReadCapabilities(p),
-                        RequiredHardware = ReadHardwareRequirements(p)
-                    };
+    private static IReadOnlyList<PolicyElementDefinition> ParseElements(XElement policy)
+    {
+        var elementsRoot = policy.Element(Ns + "elements");
+        if (elementsRoot == null)
+            return [];
 
-                    if (_cache.TryAdd(policy.Name, policy))
-                    {
-                        loadedCount++;
-                        _logger.LogDebug("Loaded policy: {Name} ({Scope})", policy.Name, policy.Scope);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Policy {Name} already exists in cache. Skipping.", policy.Name);
-                    }
-                }
-            }
-            catch (Exception ex)
+        return elementsRoot.Elements()
+            .Select(e => new PolicyElementDefinition
             {
-                _logger.LogError(ex, "Failed to load ADMX file '{File}'", file);
-            }
+                Type = e.Name.LocalName,
+                IdName = (string)e.Attribute("id")!,
+                ValueName = (string?)e.Attribute("valueName"),
+                MaxLength = (int?)e.Attribute("maxLength"),
+                Required = (bool?)e.Attribute("required") ?? false
+            })
+            .ToList();
+    }
 
-            return loadedCount;
-        }
+    private static string ExtractPresentationRef(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
 
-        private static int? ReadDecimal(XElement policy, string element)
-        {
-            var val = policy.Element(Ns + element)
-                            ?.Element(Ns + "decimal")
-                            ?.Attribute("value")?.Value;
+        return value
+            .Replace("$(presentation.", "")
+            .Replace(")", "");
+    }
 
-            return val != null && int.TryParse(val, out var i) ? i : null;
-        }
+    private static string? ExtractStringRef(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
 
-        private static IReadOnlyList<string> ReadListKeys(XElement policy)
-        {
-            return policy.Descendants(Ns + "list")
-                         .Select(l => (string?)l.Attribute("key"))
-                         .Where(k => !string.IsNullOrWhiteSpace(k))
-                         .Cast<string>()
-                         .ToList();
-        }
-
-        private static IReadOnlyList<string> ReadCapabilities(XElement policy)
-        {
-            return policy.Descendants(Ns + "capability")
-                         .Select(c => (string?)c.Attribute("name"))
-                         .Where(n => !string.IsNullOrWhiteSpace(n))
-                         .Cast<string>()
-                         .ToList();
-        }
-
-        private static IReadOnlyList<string> ReadHardwareRequirements(XElement policy)
-        {
-            return policy.Descendants(Ns + "hardwareRequirement")
-                         .Select(h => (string?)h.Attribute("name"))
-                         .Where(n => !string.IsNullOrWhiteSpace(n))
-                         .Cast<string>()
-                         .ToList();
-        }
+        return value
+            .Replace("$(string.", "")
+            .Replace(")", "");
     }
 }

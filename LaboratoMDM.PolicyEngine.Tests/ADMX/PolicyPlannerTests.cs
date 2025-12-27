@@ -94,5 +94,55 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
             Assert.False(plan.Operations.All(o => !o.Delete));
             Assert.False(plan.Operations.All(o => o.Value?.Equals(1) ?? false));
         }
+
+        [Fact]
+        public void BuildPlan_Should_Create_Operations_For_PolicyElements()
+        {
+            var policy = new PolicyDefinition
+            {
+                Name = "ElementPolicy",
+                Scope = PolicyScope.Machine,
+                RegistryKey = @"Software\Test",
+                EnabledValue = 1,
+                DisabledValue = 0,
+                Elements =
+                [
+                    new PolicyElementDefinition { IdName = "Elem1", ValueName = "Value1" },
+                    new PolicyElementDefinition { IdName = "Elem2", ValueName = "Value2" }
+                ]
+            };
+
+            var plan = _planner.BuildPlan(policy, enable: true);
+
+            Assert.Equal(2, plan.Operations.Count);
+            Assert.All(plan.Operations, op =>
+            {
+                Assert.False(op.Delete);
+                Assert.Equal(1, op.Value);
+                Assert.Equal(PolicyScope.Machine, op.Scope);
+            });
+        }
+
+        [Fact]
+        public void BuildPlan_Should_Delete_Element_Values_When_Disabling_Without_DisabledValue()
+        {
+            var policy = new PolicyDefinition
+            {
+                Name = "ElementPolicy",
+                Scope = PolicyScope.User,
+                RegistryKey = @"Software\Test",
+                DisabledValue = null,
+                Elements =
+                [
+                    new PolicyElementDefinition { IdName = "Elem1", ValueName = "Value1" }
+                ]
+            };
+
+            var plan = _planner.BuildPlan(policy, enable: false);
+
+            var op = Assert.Single(plan.Operations);
+            Assert.True(op.Delete);
+            Assert.Equal("Value1", op.ValueName);
+        }
     }
 }

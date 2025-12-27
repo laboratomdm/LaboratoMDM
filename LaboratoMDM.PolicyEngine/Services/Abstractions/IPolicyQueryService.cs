@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LaboratoMDM.PolicyEngine.Services
+namespace LaboratoMDM.PolicyEngine.Services.Abstractions
 {
     public interface IPolicyQueryService
     {

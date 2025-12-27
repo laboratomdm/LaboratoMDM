@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using LaboratoMDM.Core.Models;
 using LaboratoMDM.ActiveDirectory.Service;
-using LaboratoMDM.Core.Services;
+using LaboratoMDM.NodeEngine;
 
 namespace LaboratoMDM.Services
 {

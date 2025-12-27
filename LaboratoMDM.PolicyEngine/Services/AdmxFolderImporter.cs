@@ -1,6 +1,7 @@
 ﻿using LaboratoMDM.Core.Models.Policy;
 using LaboratoMDM.PolicyEngine.Domain;
 using LaboratoMDM.PolicyEngine.Implementations;
+using LaboratoMDM.PolicyEngine.Services.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -50,6 +51,8 @@ public sealed class AdmxFolderImporter : IAdmxFolderImporter
         var importModel = BuildImportModel(
             admxFilePath,
             hash,
+            provider.Namespaces,
+            provider.Categories,
             policies);
 
         await _importService.ImportAsync(importModel, ct);
@@ -57,9 +60,8 @@ public sealed class AdmxFolderImporter : IAdmxFolderImporter
 
     private static AdmxPolicyProvider CreateProviderForFile(string file)
     {
-        var dir = Path.GetDirectoryName(file)!;
         return new AdmxPolicyProvider(
-            dir,
+            file,
             NullLogger<AdmxPolicyProvider>.Instance);
     }
 
@@ -76,14 +78,22 @@ public sealed class AdmxFolderImporter : IAdmxFolderImporter
     private static AdmxImportModel BuildImportModel(
         string filePath,
         string fileHash,
+        IReadOnlyList<PolicyNamespaceDefinition> policyNamespaceDefinitions,
+        IReadOnlyList<PolicyCategoryDefinition> policyCategoryDefinitions,
         IReadOnlyList<PolicyDefinition> policies)
     {
         return new AdmxImportModel
         {
             FileName = Path.GetFileName(filePath),
             FileHash = fileHash,
+            Namespaces = policyNamespaceDefinitions
+                .Select(PolicyNamespaceMapper.ToEntity)
+                .ToList(),
+            Categories = policyCategoryDefinitions
+                .Select(PolicyCategoryMapper.ToEntity)
+                .ToList(),
             Policies = policies
-                .Select(PolicyDefinitionMapper.ToEntity)
+                .Select(PolicyMapper.ToEntity)
                 .ToList()
         };
     }

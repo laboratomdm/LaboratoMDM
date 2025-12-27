@@ -1,21 +1,24 @@
 ﻿using Grpc.Core;
 using LaboratoMDM.Mesh.Master.Grpc.Operator.V1;
 using LaboratoMDM.PolicyEngine.Domain;
-using LaboratoMDM.PolicyEngine.Services;
+using LaboratoMDM.PolicyEngine.Services.Abstractions;
 using System.IO.Compression;
 
-namespace LaboratoMDM.Mesh.Master.Grpc.Services;
+namespace LaboratoMDM.Mesh.Master.Grpc;
 
 public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
 {
     private readonly IAdmxQueryService _admxQueryService;
     private readonly IAdmxFolderImporter _admxFolderImporter;
+    private readonly IAdmlFolderImporter _admlFolderImporter;
 
     public AdmxServiceImpl(IAdmxQueryService admxQueryService, 
-        IAdmxFolderImporter admxFolderImporter)
+        IAdmxFolderImporter admxFolderImporter,
+        IAdmlFolderImporter admlFolderImporter)
     {
         _admxQueryService = admxQueryService;
         _admxFolderImporter = admxFolderImporter;
+        _admlFolderImporter = admlFolderImporter;
     }
 
     public override async Task<ListAdmxFilesResponse> ListAdmxFiles(
@@ -56,10 +59,9 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
 
         return response;
     }
-
-    public override async Task<ImportAdmxZipResponse> ImportAdmxZip(
-    ImportAdmxZipRequest request,
-    ServerCallContext context)
+    public override async Task<ImportAdmxResponse> ImportAdmxZip(
+        ImportAdmxZipRequest request,
+        ServerCallContext context)
     {
         if (request.ZipContent == null || request.ZipContent.Length == 0)
             throw new RpcException(new Status(StatusCode.InvalidArgument, "ZipContent is empty"));
@@ -82,10 +84,10 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
             ZipFile.ExtractToDirectory(zipFilePath, extractPath);
 
             // Вызываем импорт именно этой папки
-            await _admxFolderImporter.ImportDirectoryAsync(extractPath);
+            await _admxFolderImporter.ImportDirectoryAsync(extractPath + "\\PolicyDefinitions");
+            await _admlFolderImporter.ImportDirectoryRecursiveAsync(extractPath + "\\PolicyDefinitions");
 
-
-            return new ImportAdmxZipResponse
+            return new ImportAdmxResponse
             {
                 Success = true,
                 Message = $"Imported ADMX files from zip to {tempDir}"
@@ -93,7 +95,7 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
         }
         catch (Exception ex)
         {
-            return new ImportAdmxZipResponse
+            return new ImportAdmxResponse
             {
                 Success = false,
                 Message = $"Failed to import ADMX zip: {ex.Message}"
@@ -108,9 +110,53 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
         }
     }
 
-    private static Grpc.Operator.V1.AdmxFile MapAdmxFile(AdmxFileEntity file)
+    public override async Task<ImportAdmxResponse> ImportAdmxFile(
+       ImportAdmxFileRequest request,
+       ServerCallContext context)
     {
-        return new Grpc.Operator.V1.AdmxFile
+        if (request.FileContent == null || request.FileContent.Length == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "FileContent is empty"));
+
+        if (string.IsNullOrWhiteSpace(request.FileName))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "FileName is required"));
+
+        // Создаём временную папку
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Создаём временный файл с оригинальным именем
+            var filePath = Path.Combine(tempDir, request.FileName);
+            await File.WriteAllBytesAsync(filePath, request.FileContent.ToByteArray());
+
+            // Импортируем файл через folderImporter
+            await _admxFolderImporter.ImportFileAsync(filePath);
+
+            return new ImportAdmxResponse
+            {
+                Success = true,
+                Message = $"Imported ADMX file {request.FileName}"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ImportAdmxResponse
+            {
+                Success = false,
+                Message = $"Failed to import ADMX file: {ex.Message}"
+            };
+        }
+        finally
+        {
+            // Чистим временную папку
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    private static AdmxFile MapAdmxFile(AdmxFileEntity file)
+    {
+        return new AdmxFile
         {
             FileName = file.FileName,
             FileHash = file.FileHash,
@@ -118,30 +164,31 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
         };
     }
 
-    private static Grpc.Operator.V1.PolicyDescriptor MapPolicy(PolicyEntity p)
+    private static PolicyDescriptor MapPolicy(PolicyEntity p)
     {
-        var descriptor = new Grpc.Operator.V1.PolicyDescriptor
+        var descriptor = new PolicyDescriptor
         {
             PolicyHash = p.Hash,
             Name = p.Name,
             Scope = p.Scope switch
             {
-                Core.Models.Policy.PolicyScope.User => Grpc.Operator.V1.PolicyScope.User,
-                Core.Models.Policy.PolicyScope.Machine => Grpc.Operator.V1.PolicyScope.Machine,
-                Core.Models.Policy.PolicyScope.Both => Grpc.Operator.V1.PolicyScope.Both,
-                _ => Grpc.Operator.V1.PolicyScope.None
+                Core.Models.Policy.PolicyScope.User => PolicyScope.User,
+                Core.Models.Policy.PolicyScope.Machine => PolicyScope.Machine,
+                Core.Models.Policy.PolicyScope.Both => PolicyScope.Both,
+                _ => PolicyScope.None
             },
             RegistryKey = p.RegistryKey,
             ValueName = p.ValueName,
             EnabledValue = p.EnabledValue ?? 1,
             DisabledValue = p.DisabledValue ?? 0,
             ParentCategory = p.ParentCategory ?? string.Empty,
-            SupportedOnRef = p.SupportedOnRef ?? string.Empty
+            SupportedOnRef = p.SupportedOnRef ?? string.Empty,
+            PresentationRef = p.PresentationRef ?? string.Empty,
         };
 
         foreach (var e in p.Elements)
         {
-            descriptor.Elements.Add(new Grpc.Operator.V1.PolicyElement
+            descriptor.Elements.Add(new PolicyElement
             {
                 IdName = e.IdName,
                 Type = e.Type,
@@ -158,9 +205,9 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
         return descriptor;
     }
 
-    private static Grpc.Operator.V1.PolicyCategory MapCategory(PolicyCategoryEntity c)
+    private static PolicyCategory MapCategory(PolicyCategoryEntity c)
     {
-        return new Grpc.Operator.V1.PolicyCategory
+        return new PolicyCategory
         {
             Name = c.Name,
             DisplayName = c.DisplayName,
@@ -169,9 +216,9 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
         };
     }
 
-    private static Grpc.Operator.V1.PolicyNamespace MapNamespace(PolicyNamespaceEntity ns)
+    private static PolicyNamespace MapNamespace(PolicyNamespaceEntity ns)
     {
-        return new Grpc.Operator.V1.PolicyNamespace
+        return new PolicyNamespace
         {
             Prefix = ns.Prefix,
             Namespace = ns.Namespace

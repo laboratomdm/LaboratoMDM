@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LaboratoMDM.Core.Models.Policy
+﻿namespace LaboratoMDM.Core.Models.Policy
 {
     public sealed class SupportedOnDefinition
     {

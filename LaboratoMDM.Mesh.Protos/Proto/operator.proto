@@ -110,16 +110,24 @@ service AdmxService {
       returns (AdmxSnapshot);
 
   rpc ImportAdmxZip (ImportAdmxZipRequest)
-      returns (ImportAdmxZipResponse);
+      returns (ImportAdmxResponse);
+
+  rpc ImportAdmxFile (ImportAdmxFileRequest)
+    returns (ImportAdmxResponse);
 }
 
 message ImportAdmxZipRequest {
   bytes zip_content = 1; // сам zip-файл
 }
 
-message ImportAdmxZipResponse {
+message ImportAdmxFileRequest {
+  bytes file_content = 1; // содержимое файла
+  string file_name = 2;   // имя файла, например "test.admx"
+}
+
+message ImportAdmxResponse {
   bool success = 1;
-  string message = 2; // при ошибке или для логов
+  string message = 2;
 }
 
 message ListAdmxFilesRequest {}
@@ -194,12 +202,13 @@ message PolicyDescriptor {
 
   string supported_on_ref = 8;
   string parent_category = 9;
+  string presentation_ref = 10;
 
-  repeated PolicyElement elements = 10;
-  repeated string required_capabilities = 11;
-  repeated string required_hardware = 12;
+  repeated PolicyElement elements = 11;
+  repeated string required_capabilities = 12;
+  repeated string required_hardware = 13;
 
-  repeated string admx_file_hashes = 13;
+  repeated string admx_file_hashes = 14;
 }
 
 message PolicyElement {

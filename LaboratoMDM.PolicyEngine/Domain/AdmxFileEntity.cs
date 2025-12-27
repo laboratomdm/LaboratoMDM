@@ -1,4 +1,6 @@
-﻿namespace LaboratoMDM.PolicyEngine.Domain
+﻿using LaboratoMDM.Core.Models.Policy;
+
+namespace LaboratoMDM.PolicyEngine.Domain
 {
     /// <summary>
     /// Загруженный ADMX файл
@@ -32,7 +34,7 @@
         public string Name { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public string? ExplainText { get; set; }
-        public int? ParentCategoryId { get; set; }
+        public string? ParentCategoryRef { get; set; }
         public PolicyCategoryEntity? ParentCategory { get; set; }
         public int AdmxFileId { get; set; }
     }
@@ -42,10 +44,10 @@
     /// </summary>
     public sealed class PolicyNamespaceEntity
     {
-        public int Id { get; set; }
+        public int? Id { get; set; }
         public string Prefix { get; set; } = string.Empty;
         public string Namespace { get; set; } = string.Empty;
-        public int AdmxFileId { get; set; }
+        public int? AdmxFileId { get; set; }
     }
 
     /// <summary>
@@ -54,8 +56,78 @@
     public sealed class AdmxSnapshot
     {
         public AdmxFileEntity File { get; init; } = null!;
-        public IReadOnlyList<PolicyEntity> Policies { get; init; } = Array.Empty<PolicyEntity>();
-        public IReadOnlyList<PolicyCategoryEntity> Categories { get; init; } = Array.Empty<PolicyCategoryEntity>();
-        public IReadOnlyList<PolicyNamespaceEntity> Namespaces { get; init; } = Array.Empty<PolicyNamespaceEntity>();
+        public IReadOnlyList<PolicyEntity> Policies { get; init; } = [];
+        public IReadOnlyList<PolicyCategoryEntity> Categories { get; init; } = [];
+        public IReadOnlyList<PolicyNamespaceEntity> Namespaces { get; init; } = [];
+        public Dictionary<string, SupportedOnDefinition> SupportedOnDefinitions { get; init; } = [];
     }
+
+    public static class PolicyCategoryMapper
+    {
+        #region PolicyCategoryDefinition -> PolicyCategoryEntity
+
+        public static PolicyCategoryEntity ToEntity(
+            PolicyCategoryDefinition def,
+            int admxFileId)
+        {
+            return new PolicyCategoryEntity
+            {
+                Name = def.Name,
+                DisplayName = def.DisplayName,
+                ExplainText = def.ExplainText,
+                ParentCategoryRef = def.ParentCategoryRef,
+                AdmxFileId = admxFileId
+            };
+        }
+
+        #endregion
+
+        #region PolicyCategoryEntity -> PolicyCategoryDefinition
+
+        public static PolicyCategoryDefinition ToDefinition(
+            PolicyCategoryEntity entity)
+        {
+            return new PolicyCategoryDefinition
+            {
+                Name = entity.Name,
+                DisplayName = entity.DisplayName,
+                ExplainText = entity.ExplainText,
+                ParentCategoryRef = entity.ParentCategoryRef
+            };
+        }
+
+        #endregion
+    }
+
+    public static class PolicyNamespaceMapper
+    {
+        #region PolicyNamespaceDefinition -> PolicyNamespaceEntity
+
+        public static PolicyNamespaceEntity ToEntity(PolicyNamespaceDefinition def)
+        {
+            return new PolicyNamespaceEntity
+            {
+                Prefix = def.Prefix,
+                Namespace = def.Namespace
+            };
+        }
+
+        #endregion
+
+        #region PolicyNamespaceEntity -> PolicyNamespaceDefinition
+
+        public static PolicyNamespaceDefinition ToDefinition(
+            PolicyNamespaceEntity entity)
+        {
+            return new PolicyNamespaceDefinition
+            {
+                Prefix = entity.Prefix,
+                Namespace = entity.Namespace,
+                IsTarget = true
+            };
+        }
+
+        #endregion
+    }
+
 }

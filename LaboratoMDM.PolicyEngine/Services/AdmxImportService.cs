@@ -1,5 +1,6 @@
 ﻿using LaboratoMDM.PolicyEngine.Domain;
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
+using LaboratoMDM.PolicyEngine.Services.Abstractions;
 
 namespace LaboratoMDM.PolicyEngine.Services
 {
@@ -27,23 +28,22 @@ namespace LaboratoMDM.PolicyEngine.Services
                 model.FileName,
                 model.FileHash);
 
-            foreach (var ns in model.Namespaces)
-            {
-                ns.AdmxFileId = admx.Id;
-                await _metadataRepo.CreateNamespaceIfNotExists(ns);
-            }
+            await _metadataRepo.CreateNamespacesBatch(
+                admx.Id,
+                model.Namespaces);
 
-            foreach (var category in model.Categories)
-            {
-                category.AdmxFileId = admx.Id;
-                await _metadataRepo.CreateCategoryIfNotExists(category);
-            }
+            await _metadataRepo.CreateCategoriesBatch(
+                model.Categories);
 
-            foreach (var policy in model.Policies)
-            {
-                var created = await _policyRepo.CreateIfNotExists(policy);
-                await _policyRepo.LinkPolicyToAdmx(created.Id, admx.Id);
-            }
+            await _policyRepo.CreatePoliciesBatch(
+                model.Policies);
+
+            var storedPolicies = await _policyRepo
+                .GetByHashes([.. model.Policies.Select(p => p.Hash)]);
+
+            await _policyRepo.LinkPoliciesToAdmxBatch(
+                admx.Id,
+                [.. storedPolicies.Select(p => p.Id)]);
 
             return admx;
         }

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LaboratoMDM.Core\LaboratoMDM.Core.csproj" />
+    <ProjectReference Include="..\LaboratoMDM.NodeEngine\LaboratoMDM.NodeEngine.csproj" />
   </ItemGroup>
 
 </Project>

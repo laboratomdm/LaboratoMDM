@@ -39,15 +39,15 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             {
                 cmd.CommandText = """
                     INSERT OR IGNORE INTO PolicyCategories
-                    (Name, ParentCategoryId)
+                    (Name, ParentCategoryRef)
                     VALUES (@name, @parent)
                 """;
 
                 cmd.Parameters.AddWithValue("@name", category.Name);
                 cmd.Parameters.AddWithValue(
                     "@parent",
-                    category.ParentCategoryId.HasValue
-                        ? category.ParentCategoryId.Value
+                    !string.IsNullOrWhiteSpace(category.ParentCategoryRef)
+                        ? category.ParentCategoryRef
                         : DBNull.Value);
 
                 await cmd.ExecuteNonQueryAsync();
@@ -57,6 +57,51 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             return created
                    ?? throw new InvalidOperationException(
                        "Failed to create or load category");
+        }
+
+        public async Task CreateCategoriesBatch(IReadOnlyList<PolicyCategoryEntity> categories)
+        {
+            await using var tx = await _connection.BeginTransactionAsync();
+
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = (SqliteTransaction)tx;
+
+            cmd.CommandText = """
+                INSERT OR IGNORE INTO PolicyCategories
+                (Name, ParentCategoryRef, DisplayName, ExplainText)
+                VALUES (@name, @parent, @dn, @et)
+            """;
+
+            var name = cmd.CreateParameter();
+            name.ParameterName = "@name";
+            cmd.Parameters.Add(name);
+
+            var parent = cmd.CreateParameter();
+            parent.ParameterName = "@parent";
+            cmd.Parameters.Add(parent);
+
+            var dn = cmd.CreateParameter();
+            dn.ParameterName = "@dn";
+            cmd.Parameters.Add(dn);
+
+            var et = cmd.CreateParameter();
+            et.ParameterName = "@et";
+            cmd.Parameters.Add(et);
+
+            foreach (var c in categories)
+            {
+                name.Value = c.Name;
+                parent.Value = !string.IsNullOrWhiteSpace(c.ParentCategoryRef)
+                        ? c.ParentCategoryRef
+                        : DBNull.Value;
+                dn.Value = c.DisplayName;
+                et.Value = !string.IsNullOrEmpty(c.ExplainText)
+                    ? c.ExplainText : DBNull.Value;
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            await tx.CommitAsync();
         }
 
         public async Task<IReadOnlyList<PolicyCategoryEntity>> GetCategoryTree()
@@ -113,6 +158,45 @@ namespace LaboratoMDM.PolicyEngine.Persistence
                     "Failed to create or load namespace");
 
             return _namespaceMapper.Map(reader);
+        }
+
+        public async Task CreateNamespacesBatch(
+            int admxFileId,
+            IReadOnlyList<PolicyNamespaceEntity> namespaces)
+        {
+            await using var tx = await _connection.BeginTransactionAsync();
+
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = (SqliteTransaction) tx;
+
+            cmd.CommandText = """
+                INSERT OR IGNORE INTO PolicyNamespaces
+                (AdmxFileId, Prefix, Namespace)
+                VALUES (@admx, @prefix, @ns)
+            """;
+
+            var admx = cmd.CreateParameter();
+            admx.ParameterName = "@admx";
+            cmd.Parameters.Add(admx);
+
+            var prefix = cmd.CreateParameter();
+            prefix.ParameterName = "@prefix";
+            cmd.Parameters.Add(prefix);
+
+            var ns = cmd.CreateParameter();
+            ns.ParameterName = "@ns";
+            cmd.Parameters.Add(ns);
+
+            foreach (var n in namespaces)
+            {
+                admx.Value = admxFileId;
+                prefix.Value = n.Prefix;
+                ns.Value = n.Namespace;
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            await tx.CommitAsync();
         }
 
         public async Task<IReadOnlyList<PolicyNamespaceEntity>> GetNamespacesForAdmx(

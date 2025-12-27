@@ -86,11 +86,11 @@ public sealed class SqliteSchemaMigrator : ISchemaMigrator
 
             await tx.CommitAsync(ct);
         }
-        catch
+        catch(Exception ex)
         {
             await tx.RollbackAsync(ct);
             throw new InvalidOperationException(
-                $"Failed to apply migration {migration.Version} ({migration.Name})");
+                $"Failed to apply migration {migration.Version} ({migration.Name}). Reason: {ex.Message}");
         }
     }
 

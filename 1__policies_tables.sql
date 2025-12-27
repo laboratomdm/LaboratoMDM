@@ -9,6 +9,7 @@ CREATE TABLE Policies (
     DisabledValue INTEGER,
     SupportedOnRef TEXT,
     ParentCategoryRef TEXT,
+    PresentationRef TEXT,
     Hash TEXT NOT NULL, -- хэш политики (для идентичности)
     CONSTRAINT chk_scope CHECK(Scope IN ('None', 'User', 'Machine', 'Both')),
     UNIQUE(Name, Hash)
@@ -26,7 +27,7 @@ CREATE TABLE PolicyElements (
     PolicyId INTEGER NOT NULL,
     ElementId TEXT NOT NULL,      -- внутренний id элемента в ADMX
     Type TEXT NOT NULL,           -- text, decimal, checkbox, list, combobox
-    ValueName TEXT NOT NULL,
+    ValueName TEXT,
     Required INTEGER NOT NULL DEFAULT 0,
     MaxLength INTEGER,
     ClientExtension TEXT,
@@ -69,15 +70,10 @@ CREATE TABLE PolicyCategories (
     Name TEXT NOT NULL UNIQUE,
     DisplayName TEXT NOT NULL,
     ExplainText TEXT,
-    ParentCategoryId INTEGER,
-    AdmxFileId INTEGER NOT NULL,
-    FOREIGN KEY (ParentCategoryId) REFERENCES PolicyCategories(Id) ON DELETE SET NULL,
-    FOREIGN KEY (AdmxFileId) REFERENCES AdmxFiles(Id) ON DELETE CASCADE
+    ParentCategoryRef TEXT
 );
 
 CREATE INDEX idx_categories_name ON PolicyCategories(Name);
-CREATE INDEX idx_categories_parent ON PolicyCategories(ParentCategoryId);
-CREATE INDEX idx_categories_admxfile ON PolicyCategories(AdmxFileId);
 
 -- Связь политики с исходным ADMX файлом
 CREATE TABLE PolicyAdmxMapping (
