@@ -207,7 +207,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
 
     private static IReadOnlyList<PolicyElementDefinition> ParseElements(XElement policy)
     {
-        var elementsRoot = policy.Element(Ns + "elements");
+        var elementsRoot = policy.Elements(Ns + "elements");
         if (elementsRoot == null)
             return [];
 
@@ -248,13 +248,15 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
     }
     private static List<PolicyElementItemDefinition> ParseEnumItems(XElement elements)
     {
-        var items = elements.Element(Ns + "item");
+        var items = elements.Elements(Ns + "item");
         if(items == null)
             return [];
 
         return items.Elements().Select(item =>
         {
-            var itemValue = ParseItemValue(item);
+            (PolicyElementItemValueType? Type, string? Value) itemValue = (null, null);
+            try { itemValue = ParseItemValue(item); } catch { /* ignore */ }
+
             return new PolicyElementItemDefinition()
             {
                 RegistryKey = item.Attribute("key")?.Value,
@@ -271,7 +273,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
 
     private static List<PolicyElementItemDefinition> ParseValueListType(XElement valueListElement)
     {
-        var items = valueListElement.Element(Ns + "item");
+        var items = valueListElement.Elements(Ns + "item");
         if(items == null)
         {
             return [];
@@ -295,40 +297,42 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
 
     private static List<PolicyElementItemDefinition> ParseBooleanType(XElement booleanElement)
     {
-        var trueValueElement = booleanElement.Element("trueValue")?.Elements().FirstOrDefault()
-            ?? throw new ArgumentNullException("Boolean item type always should have trueValue.");
-        var falseValueElement = booleanElement.Element("falseValue")?.Elements().FirstOrDefault()
-            ?? throw new ArgumentNullException("Boolean item type always should have falseValue.");
-
-        var trueItemValue = ParseItemValue(trueValueElement);
-        var falseItemValue = ParseItemValue(falseValueElement);
+        var trueValueElement = booleanElement.Element(Ns + "trueValue")?.Elements().FirstOrDefault();
+        var falseValueElement = booleanElement.Element(Ns + "falseValue")?.Elements().FirstOrDefault();
 
         var idName = booleanElement.Attribute("id")?.Value;
         var registryKey = booleanElement.Attribute("key")?.Value;
         var valueName = booleanElement.Attribute("valueName")?.Value;
         var required = booleanElement.Attribute("required")?.Value;
 
-        var trueValueDefinition = new PolicyElementItemDefinition()
+        if (trueValueElement != null && falseValueElement != null)
         {
-            IdName = !string.IsNullOrEmpty(idName) ? idName : null,
-            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
-            ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
-            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
-            Value = trueItemValue.Value,
-            ValueType = trueItemValue.Type
-        };
+            var trueItemValue = ParseBooleanValue(trueValueElement);
+            var falseItemValue = ParseBooleanValue(falseValueElement);
 
-        var falseValueDefinition = new PolicyElementItemDefinition()
-        {
-            IdName = !string.IsNullOrEmpty(idName) ? idName : null,
-            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
-            ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
-            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
-            Value = falseItemValue.Value,
-            ValueType = falseItemValue.Type
-        };
+            var trueValueDefinition = new PolicyElementItemDefinition()
+            {
+                IdName = !string.IsNullOrEmpty(idName) ? idName : null,
+                RegistryKey = !string.IsNullOrEmpty(registryKey) ? registryKey : null,
+                ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
+                Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+                Value = trueItemValue.Value,
+                ValueType = trueItemValue.Type
+            };
 
-        return [trueValueDefinition, falseValueDefinition];
+            var falseValueDefinition = new PolicyElementItemDefinition()
+            {
+                IdName = !string.IsNullOrEmpty(idName) ? idName : null,
+                RegistryKey = !string.IsNullOrEmpty(registryKey) ? registryKey : null,
+                ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
+                Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+                Value = falseItemValue.Value,
+                ValueType = falseItemValue.Type
+            };
+
+            return [trueValueDefinition, falseValueDefinition];
+        }
+        return [];
     }
 
     private static PolicyElementDefinition ParseListType(XElement element)
@@ -415,18 +419,24 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
 
         return new PolicyElementDefinition()
         {
-            IdName = element.Attribute("id")?.Value,
-            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
+            IdName = element.Attribute("id")?.Value ?? throw new ArgumentNullException("MultiText policy item always should contain id attribute."),
+            RegistryKey = !string.IsNullOrEmpty(registryKey) ? registryKey : null,
             ValueName = element.Attribute("valueName")?.Value,
             Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
             MaxLength = !string.IsNullOrEmpty(maxLength) ? int.Parse(maxLength) : null,
-            MaxStrings = string.IsNullOrEmpty(maxStrings) ? int.Parse(maxStrings) : null
+            MaxStrings = !string.IsNullOrEmpty(maxStrings) ? int.Parse(maxStrings) : null,
+            Type = PolicyElementType.MULTITEXT
         };
     }
 
-    private static (PolicyElementItemValueType Type, string? Value) ParseItemValue(XElement item)
+    private static (PolicyElementItemValueType Type, string? Value) ParseItemValue(XElement? item)
     {
-        var type = item.Element(Ns + "value")?.Elements().FirstOrDefault();
+        if (!item?.Name.LocalName.ToLowerInvariant().Equals("value") ?? false)
+        {
+            item = item?.Element(Ns + "value")?.Elements().FirstOrDefault();
+        }
+
+        var type = item?.Elements().FirstOrDefault();
         if (type == null)
         {
             throw new InvalidOperationException($"Polciy elements item always should contait value elements.");
@@ -438,6 +448,20 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
             "decimal" => (PolicyElementItemValueType.DECIMAL, type.Attribute("value")?.Value),
             "string" => (PolicyElementItemValueType.STRING, type.Value),
             _ => throw new InvalidOperationException($"Has no elements item value type with name: {type.Name.LocalName.ToLowerInvariant()}")
+        };
+    }
+
+    private static (PolicyElementItemValueType Type, string? Value) ParseBooleanValue(XElement? item) {
+        if (item == null) 
+        {
+            throw new InvalidOperationException($"Polciy elements item always should contait value elements.");
+        }
+        return item.Name.LocalName.ToLowerInvariant() switch
+        {
+            "delete" => (PolicyElementItemValueType.DELETE, null),
+            "decimal" => (PolicyElementItemValueType.DECIMAL, item.Attribute("value")?.Value),
+            "string" => (PolicyElementItemValueType.STRING, item.Value),
+            _ => throw new InvalidOperationException($"Has no elements item value type with name: {item.Name.LocalName.ToLowerInvariant()}")
         };
     }
 

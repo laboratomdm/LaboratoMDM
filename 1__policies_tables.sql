@@ -28,21 +28,69 @@ CREATE INDEX idx_policies_parentcategory ON Policies(ParentCategoryRef);
 CREATE TABLE PolicyElements (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     PolicyId INTEGER NOT NULL,
-    ElementId TEXT NOT NULL,      -- внутренний id элемента в ADMX
-    Type TEXT NOT NULL,           -- text, decimal, checkbox, list, combobox
+
+    ElementId TEXT NOT NULL,
+    Type TEXT NOT NULL,
+
     ValueName TEXT,
+
     Required INTEGER NOT NULL DEFAULT 0,
     MaxLength INTEGER,
     ClientExtension TEXT,
+
+    -- LIST
+    ValuePrefix TEXT,
+    ExplicitValue BOOLEAN,
+    Additive BOOLEAN,
+
+    -- DECIMAL
+    MinValue BIGINT,
+    MaxValue BIGINT,
+    StoreAsText BOOLEAN,
+
+    -- TEXT / MULTITEXT
+    Expandable BOOLEAN,
+    MaxStrings INTEGER,
+
     FOREIGN KEY (PolicyId) REFERENCES Policies(Id) ON DELETE CASCADE,
-    UNIQUE(PolicyId, ElementId)
+    UNIQUE (PolicyId, ElementId)
 );
 
 CREATE INDEX idx_elements_policyid ON PolicyElements(PolicyId);
 CREATE INDEX idx_elements_type ON PolicyElements(Type);
 CREATE INDEX idx_elements_valuename ON PolicyElements(ValueName);
 
--- add table for policy element item (PolicyElementItems)
+CREATE TABLE PolicyElementItems (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    Name TEXT NOT NULL,
+    PolicyElementId INTEGER NOT NULL,
+
+    ParentType TEXT NOT NULL
+        CHECK (ParentType IN ('elements', 'enabled_list', 'disabled_list')),
+
+    Type TEXT NOT NULL
+        CHECK (Type IN ('value', 'value_list')),
+
+    ValueType TEXT
+        CHECK (ValueType IN ('decimal', 'string', 'delete')),
+
+    RegistryKey TEXT,
+    ValueName TEXT,
+    Value TEXT,
+
+    DisplayName TEXT,
+    Required BOOLEAN,
+
+    ParentId INTEGER,
+
+    FOREIGN KEY (PolicyElementId) REFERENCES PolicyElements(Id) ON DELETE CASCADE,
+    FOREIGN KEY (ParentId) REFERENCES PolicyElementItems(Id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_items_elementid ON PolicyElementItems(PolicyElementId);
+CREATE INDEX idx_items_parentid ON PolicyElementItems(ParentId);
+CREATE INDEX idx_items_type ON PolicyElementItems(Type);
 
 -- Таблица загруженных ADMX файлов
 CREATE TABLE AdmxFiles (

@@ -224,7 +224,7 @@ namespace LaboratoMDM.Core.Models.Policy
     {
         public PolicyChildType ParentType;
         public PolicyElementItemType Type;
-        public PolicyElementItemValueType ValueType;
+        public PolicyElementItemValueType? ValueType;
         public string? RegistryKey { get; set; }
         public string? ValueName { get; set; }
         public string? Value { get; set; }
@@ -255,9 +255,7 @@ namespace LaboratoMDM.Core.Models.Policy
     {
         ELEMENTS, 
         ENABLED_LIST,
-        DISABLED_LIST,
-        //ENABLED_VALUE,
-        //DISABLED_VALUE
+        DISABLED_LIST
     }
 
     public enum PolicyElementItemType

@@ -4,6 +4,6 @@ namespace LaboratoMDM.PolicyEngine
 {
     public interface IPolicyPlanner
     {
-        PolicyApplicationPlan BuildPlan(PolicyDefinition policy, bool enable);
+        PolicyApplicationPlan BuildPlan(PolicyDefinition policy, PolicySelection selection);
     }
 }

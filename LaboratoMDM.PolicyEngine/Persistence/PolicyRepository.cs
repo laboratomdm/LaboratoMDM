@@ -114,7 +114,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             """;
 
             var name = cmd.CreateParameter(); name.ParameterName = "@name";
-            var dn = cmd.CreateParameter(); dn.ParameterName = "@pn";
+            var dn = cmd.CreateParameter(); dn.ParameterName = "@dn";
             var et = cmd.CreateParameter(); et.ParameterName = "@et";
             var scope = cmd.CreateParameter(); scope.ParameterName = "@scope";
             var rk = cmd.CreateParameter(); rk.ParameterName = "@rk";
@@ -124,10 +124,11 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             var sup = cmd.CreateParameter(); sup.ParameterName = "@sup";
             var pcr = cmd.CreateParameter(); pcr.ParameterName = "@pcr";
             var pres = cmd.CreateParameter(); pres.ParameterName = "@pres";
-            var ce = cmd.CreateParameter(); pres.ParameterName = "@ce";
+            var ce = cmd.CreateParameter(); ce.ParameterName = "@ce";
             var hash = cmd.CreateParameter(); hash.ParameterName = "@hash";
 
-            cmd.Parameters.AddRange(new[] { name, scope, rk, vn, en, dis, sup, pcr, pres, ce, hash });
+
+            cmd.Parameters.AddRange(new[] { name, dn, et, scope, rk, vn, en, dis, sup, pcr, pres, ce, hash });
 
             foreach (var p in policies)
             {
@@ -160,40 +161,88 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             await tx.CommitAsync();
         }
 
-        private async Task SavePolicyElementsAsync(int policyId, IEnumerable<PolicyElementEntity> elements, SqliteTransaction tx)
+        private async Task SavePolicyElementsAsync(
+            int policyId,
+            IEnumerable<PolicyElementEntity> elements,
+            SqliteTransaction tx)
         {
-            await using var cmd = _conn.CreateCommand();
-            cmd.Transaction = tx;
-
-            cmd.CommandText = @"
-INSERT INTO PolicyElements
-(PolicyId, ElementId, Type, ValueName, Required, MaxLength, ClientExtension)
-VALUES (@policyId, @elementId, @type, @valueName, @required, @maxLength, @clientExt)
-ON CONFLICT(PolicyId, ElementId) DO NOTHING;
-SELECT Id FROM PolicyElements WHERE PolicyId = @policyId AND ElementId = @elementId;
-";
-
-            var policyParam = cmd.CreateParameter(); policyParam.ParameterName = "@policyId";
-            var elementParam = cmd.CreateParameter(); elementParam.ParameterName = "@elementId";
-            var typeParam = cmd.CreateParameter(); typeParam.ParameterName = "@type";
-            var valueParam = cmd.CreateParameter(); valueParam.ParameterName = "@valueName";
-            var requiredParam = cmd.CreateParameter(); requiredParam.ParameterName = "@required";
-            var maxParam = cmd.CreateParameter(); maxParam.ParameterName = "@maxLength";
-            var clientParam = cmd.CreateParameter(); clientParam.ParameterName = "@clientExt";
-
-            cmd.Parameters.AddRange(new[] { policyParam, elementParam, typeParam, valueParam, requiredParam, maxParam, clientParam });
-
             foreach (var e in elements)
             {
-                policyParam.Value = policyId;
-                elementParam.Value = e.IdName;
-                typeParam.Value = e.Type;
-                valueParam.Value = (object?)e.ValueName ?? DBNull.Value;
-                requiredParam.Value = (e.Required ?? false) ? 1 : 0;
-                maxParam.Value = (object?)e.MaxLength ?? DBNull.Value;
-                clientParam.Value = (object?)e.ClientExtension ?? DBNull.Value;
+                using var cmd = _conn.CreateCommand();
+                cmd.Transaction = tx;
+                cmd.CommandText = """
+INSERT OR IGNORE INTO PolicyElements
+(PolicyId, ElementId, Type, ValueName, Required, MaxLength, ClientExtension, ValuePrefix, 
+ExplicitValue, Additive, MinValue, MaxValue, StoreAsText, Expandable, MaxStrings)
+VALUES
+(@pid,@eid,@type,@vn,@req,@ml,@ce,@vp,@ev,@add,@min,@max,@store,@exp,@maxstr);
+
+SELECT Id
+FROM PolicyElements
+WHERE PolicyId = @pid AND ElementId = @eid;
+""";
+
+                cmd.Parameters.AddWithValue("@pid", policyId);
+                cmd.Parameters.AddWithValue("@eid", e.IdName);
+                cmd.Parameters.AddWithValue("@type", e.Type);
+                cmd.Parameters.AddWithValue("@vn", (object?)e.ValueName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@req", e.Required ? 1 : 0);
+                cmd.Parameters.AddWithValue("@ml", (object?)e.MaxLength ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ce", (object?)e.ClientExtension ?? DBNull.Value);
+
+                cmd.Parameters.AddWithValue("@vp", (object?)e.ValuePrefix ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ev", (object?)e.ExplicitValue ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@add", (object?)e.Additive ?? DBNull.Value);
+
+                cmd.Parameters.AddWithValue("@min", (object?)e.MinValue ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@max", (object?)e.MaxValue ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@store", (object?)e.StoreAsText ?? DBNull.Value);
+
+                cmd.Parameters.AddWithValue("@exp", (object?)e.Expandable ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@maxstr", (object?)e.MaxStrings ?? DBNull.Value);
 
                 e.Id = (int)(long)(await cmd.ExecuteScalarAsync()!);
+
+                // items
+                await SavePolicyElementItemsAsync(e.Id, e.Childs, null, tx);
+            }
+        }
+
+        private async Task SavePolicyElementItemsAsync(
+            int elementId,
+            IEnumerable<PolicyElementItemEntity> items,
+            int? parentId,
+            SqliteTransaction tx)
+        {
+            foreach (var item in items)
+            {
+                using var cmd = _conn.CreateCommand();
+                cmd.Transaction = tx;
+                cmd.CommandText = """
+                    INSERT INTO PolicyElementItems
+                    (Name, PolicyElementId, ParentType, Type, ValueType,
+                     RegistryKey, ValueName, Value, DisplayName, Required, ParentId)
+                    VALUES
+                    (@name, @eid, @pt, @type, @vt, @rk, @vn, @val, @dn, @req, @pid);
+                    SELECT last_insert_rowid();
+                """;
+
+                cmd.Parameters.AddWithValue("@name", item.Name);
+                cmd.Parameters.AddWithValue("@eid", elementId);
+                cmd.Parameters.AddWithValue("@pt", item.ParentTypeString);
+                cmd.Parameters.AddWithValue("@type", item.TypeString);
+                cmd.Parameters.AddWithValue("@vt", (object?)item.ValueType ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@rk", (object?)item.RegistryKey ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@vn", (object?)item.ValueName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@val", (object?)item.Value ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@dn", (object?)item.DisplayName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@req", (object?)item.Required ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@pid", (object?)parentId ?? DBNull.Value);
+
+                item.Id = (int)(long)(await cmd.ExecuteScalarAsync()!);
+
+                if (item.Childs.Count > 0)
+                    await SavePolicyElementItemsAsync(elementId, item.Childs, item.Id, tx);
             }
         }
 
