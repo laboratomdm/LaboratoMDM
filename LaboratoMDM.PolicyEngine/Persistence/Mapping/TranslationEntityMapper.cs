@@ -9,15 +9,15 @@ public sealed class TranslationEntityMapper : IEntityMapper<Translation>
     {
         return new Translation
         {
-            StringId = r.GetString(r.GetOrdinal("string_id")),
-            LangCode = r.GetString(r.GetOrdinal("lang_code")),
-            TextValue = r.GetString(r.GetOrdinal("text_value")),
-            AdmlFilename = r.IsDBNull(r.GetOrdinal("adml_filename"))
+            StringId = r.GetString(r.GetOrdinal("StringId")),
+            LangCode = r.GetString(r.GetOrdinal("LangCode")),
+            TextValue = r.GetString(r.GetOrdinal("TextValue")),
+            AdmlFilename = r.IsDBNull(r.GetOrdinal("AdmlFilename"))
                 ? null
-                : r.GetString(r.GetOrdinal("adml_filename")),
-            CreatedAt = r.IsDBNull(r.GetOrdinal("created_at"))
+                : r.GetString(r.GetOrdinal("AdmlFilename")),
+            CreatedAt = r.IsDBNull(r.GetOrdinal("CreatedAt"))
                 ? null
-                : r.GetDateTime(r.GetOrdinal("created_at"))
+                : r.GetDateTime(r.GetOrdinal("CreatedAt"))
         };
     }
 }

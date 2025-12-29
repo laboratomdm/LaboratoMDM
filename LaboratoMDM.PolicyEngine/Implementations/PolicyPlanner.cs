@@ -73,7 +73,7 @@ namespace LaboratoMDM.PolicyEngine.Implementations
                         ValueName = valueName,
                         ValueKind = RegistryValueKind.DWord,
                         Value = enable
-                            ? policy.EnabledValue ?? 1
+                            ? policy.EnabledValue ?? "1"
                             : policy.DisabledValue,
                         Reason = $"Element {element.IdName}: {(enable ? "enable" : "disable")}"
                     });
@@ -104,7 +104,7 @@ namespace LaboratoMDM.PolicyEngine.Implementations
                 Key = policy.RegistryKey,
                 ValueName = policy.ValueName,
                 ValueKind = RegistryValueKind.DWord,
-                Value = enable ? policy.EnabledValue ?? 1 : policy.DisabledValue,
+                Value = enable ? policy.EnabledValue ?? "1" : policy.DisabledValue,
                 Reason = "Legacy policy: set value"
             });
 

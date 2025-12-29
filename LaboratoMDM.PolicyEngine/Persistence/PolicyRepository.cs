@@ -70,13 +70,15 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             cmd.Transaction = (SqliteTransaction)tx;
             cmd.CommandText = """
                 INSERT INTO Policies
-                (Name, Scope, RegistryKey, ValueName, EnabledValue, DisabledValue, SupportedOnRef, ParentCategoryRef, PresentationRef, Hash)
+                (Name, DisplayName, ExplainText, Scope, RegistryKey, ValueName, EnabledValue, DisabledValue, SupportedOnRef, ParentCategoryRef, PresentationRef, ClientExtension, Hash)
                 VALUES
-                (@name, @scope, @rk, @vn, @en, @dis, @sup, @pcr, @pres, @hash);
+                (@name, @dn, @et, @scope, @rk, @vn, @en, @dis, @sup, @pcr, @pres, @ce, @hash);
                 SELECT last_insert_rowid();
             """;
 
             cmd.Parameters.AddWithValue("@name", policy.Name);
+            cmd.Parameters.AddWithValue("@dn", (object?)policy.DisplayName ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@et", (object?)policy.ExplainText ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@scope", policy.ScopeString);
             cmd.Parameters.AddWithValue("@rk", (object?)policy.RegistryKey ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@vn", (object?)policy.ValueName ?? DBNull.Value);
@@ -85,6 +87,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             cmd.Parameters.AddWithValue("@sup", (object?)policy.SupportedOnRef ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@pcr", (object?)policy.ParentCategory ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@pres", (object?)policy.PresentationRef ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ce", (object?)policy.ClientExtension ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@hash", policy.Hash);
 
             policy.Id = (int)(long)(await cmd.ExecuteScalarAsync()!);
@@ -105,12 +108,14 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             cmd.Transaction = (SqliteTransaction)tx;
             cmd.CommandText = """
                 INSERT OR IGNORE INTO Policies
-                (Name, Scope, RegistryKey, ValueName, EnabledValue, DisabledValue, SupportedOnRef, ParentCategoryRef, PresentationRef, Hash)
+                (Name, DisplayName, ExplainText, Scope, RegistryKey, ValueName, EnabledValue, DisabledValue, SupportedOnRef, ParentCategoryRef, PresentationRef, ClientExtension, Hash)
                 VALUES
-                (@name, @scope, @rk, @vn, @en, @dis, @sup, @pcr, @pres, @hash);
+                (@name, @dn, @et, @scope, @rk, @vn, @en, @dis, @sup, @pcr, @pres, @ce, @hash);
             """;
 
             var name = cmd.CreateParameter(); name.ParameterName = "@name";
+            var dn = cmd.CreateParameter(); dn.ParameterName = "@pn";
+            var et = cmd.CreateParameter(); et.ParameterName = "@et";
             var scope = cmd.CreateParameter(); scope.ParameterName = "@scope";
             var rk = cmd.CreateParameter(); rk.ParameterName = "@rk";
             var vn = cmd.CreateParameter(); vn.ParameterName = "@vn";
@@ -119,13 +124,16 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             var sup = cmd.CreateParameter(); sup.ParameterName = "@sup";
             var pcr = cmd.CreateParameter(); pcr.ParameterName = "@pcr";
             var pres = cmd.CreateParameter(); pres.ParameterName = "@pres";
+            var ce = cmd.CreateParameter(); pres.ParameterName = "@ce";
             var hash = cmd.CreateParameter(); hash.ParameterName = "@hash";
 
-            cmd.Parameters.AddRange(new[] { name, scope, rk, vn, en, dis, sup, pcr, pres, hash });
+            cmd.Parameters.AddRange(new[] { name, scope, rk, vn, en, dis, sup, pcr, pres, ce, hash });
 
             foreach (var p in policies)
             {
                 name.Value = p.Name;
+                dn.Value = (object?)p.DisplayName ?? DBNull.Value;
+                et.Value = (object?)p.ExplainText ?? DBNull.Value;
                 scope.Value = p.ScopeString;
                 rk.Value = (object?)p.RegistryKey ?? DBNull.Value;
                 vn.Value = (object?)p.ValueName ?? DBNull.Value;
@@ -134,6 +142,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence
                 sup.Value = (object?)p.SupportedOnRef ?? DBNull.Value;
                 pcr.Value = (object?)p.ParentCategory ?? DBNull.Value;
                 pres.Value = (object?)p.PresentationRef ?? DBNull.Value;
+                ce.Value = (object?)p.ClientExtension ?? DBNull.Value;
                 hash.Value = p.Hash;
 
                 await cmd.ExecuteNonQueryAsync();
@@ -180,7 +189,7 @@ SELECT Id FROM PolicyElements WHERE PolicyId = @policyId AND ElementId = @elemen
                 elementParam.Value = e.IdName;
                 typeParam.Value = e.Type;
                 valueParam.Value = (object?)e.ValueName ?? DBNull.Value;
-                requiredParam.Value = e.Required ? 1 : 0;
+                requiredParam.Value = (e.Required ?? false) ? 1 : 0;
                 maxParam.Value = (object?)e.MaxLength ?? DBNull.Value;
                 clientParam.Value = (object?)e.ClientExtension ?? DBNull.Value;
 

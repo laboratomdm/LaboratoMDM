@@ -19,7 +19,7 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
                 Scope = PolicyScope.Machine,
                 RegistryKey = @"Software\Test",
                 ValueName = "Enabled",
-                EnabledValue = 1,
+                EnabledValue = "1",
                 DisabledValue = null
             };
 
@@ -45,8 +45,8 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
                 Scope = PolicyScope.User,
                 RegistryKey = @"Software\Test",
                 ValueName = "Enabled",
-                EnabledValue = 1,
-                DisabledValue = 0
+                EnabledValue = "1",
+                DisabledValue = "0"
             };
 
             var plan = _planner.BuildPlan(policy, enable: true);
@@ -103,8 +103,8 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
                 Name = "ElementPolicy",
                 Scope = PolicyScope.Machine,
                 RegistryKey = @"Software\Test",
-                EnabledValue = 1,
-                DisabledValue = 0,
+                EnabledValue = "1",
+                DisabledValue = "0",
                 Elements =
                 [
                     new PolicyElementDefinition { IdName = "Elem1", ValueName = "Value1" },

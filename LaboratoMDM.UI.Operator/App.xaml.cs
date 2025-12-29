@@ -41,8 +41,12 @@ namespace LaboratoMDM.UI.Operator
             // Открываем главное окно (или агентское окно)
             //var window = Services.GetRequiredService<AgentWindow>();
             //window.Show();
-            var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
-            policyEditorWindow.Show();
+
+            //var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
+            //policyEditorWindow.Show();
+
+            var policyBrowserWindow = new PolicyBrowserWindow();
+            policyBrowserWindow.Show();
         }
     }
 }

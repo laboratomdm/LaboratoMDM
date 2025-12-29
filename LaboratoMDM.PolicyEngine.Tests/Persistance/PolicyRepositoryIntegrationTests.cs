@@ -20,8 +20,8 @@ public class PolicyRepositoryIntegrationTests(SqliteFileSchemaFixture fixture)
             Scope = Core.Models.Policy.PolicyScope.Machine,
             RegistryKey = @"HKLM\Software\Test",
             ValueName = "Enabled",
-            EnabledValue = 1,
-            DisabledValue = 0,
+            EnabledValue = "1",
+            DisabledValue = "0",
             Hash = "hash-file-schema"
         };
 

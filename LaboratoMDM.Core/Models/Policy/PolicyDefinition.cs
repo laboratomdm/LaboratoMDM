@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace LaboratoMDM.Core.Models.Policy
 {
@@ -117,15 +118,17 @@ namespace LaboratoMDM.Core.Models.Policy
         /// </summary>
         public string ValueName { get; init; } = string.Empty;
 
-        /// <summary>
-        /// Значение включено
-        /// </summary>
-        public int? EnabledValue { get; init; }
 
         /// <summary>
-        /// Значение выключено
+        /// Значение когда политика включена
         /// </summary>
-        public int? DisabledValue { get; init; }
+        public string? EnabledValue { get; init; }
+
+        /// <summary>
+        /// Значение когда политика выключена
+        /// </summary>
+        public string? DisabledValue { get; init; }
+
 
         /// <summary>
         /// Идентификатор представления для данной политики
@@ -146,6 +149,11 @@ namespace LaboratoMDM.Core.Models.Policy
         /// Указатель на родительскую(группирующую) категорию.
         /// </summary>
         public string? ParentCategoryRef { get; init; }
+
+        /// <summary>
+        /// Указатель на механизм применения политики на машине.
+        /// </summary>
+        public string? ClientExtension { get; init; }
 
         /// <summary>
         /// Элементы политики (text, checkbox, list и т.д.)
@@ -173,11 +181,95 @@ namespace LaboratoMDM.Core.Models.Policy
     /// </summary>
     public sealed class PolicyElementDefinition
     {
-        public string Type { get; init; } = "text";
+        public PolicyElementType Type { get; init; }
+
         public string IdName { get; init; } = string.Empty;
+        public string? RegistryKey { get; set; }
         public string? ValueName { get; init; }
         public int? MaxLength { get; init; }
-        public bool Required { get; init; }
+        public bool? Required { get; init; }
         public string? ClientExtension { get; init; }
+
+        #region Fields Only For List
+        public string? ValuePrefix { get; init; }
+        public bool? ExplicitValue { get; init; }
+        public bool? Additive { get; init; }
+        #endregion
+
+        #region Fields Only For Decimal
+        public long? MinValue { get; init; }
+        public long? MaxValue { get; init; }
+        public long? Maxvalue { get; init; }
+        public int? Value { get; init; }
+        public bool? StoreAsText { get; init; }
+        #endregion
+
+        #region Fields Only For Text
+        public bool? Expandable { get; init; }
+        #endregion
+
+        #region Fields Only For MultiText
+        public int? MaxStrings { get; init; }
+        #endregion
+        /// <summary>
+        /// Элементы значений элементов конфигурирования политики.
+        /// </summary>
+        public List<PolicyElementItemDefinition> Childs { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Дочерние элементы PolicyElement (напр. итемы elements, enabled/disabled list, enabled/disabled value)
+    /// </summary>
+    public sealed class PolicyElementItemDefinition
+    {
+        public PolicyChildType ParentType;
+        public PolicyElementItemType Type;
+        public PolicyElementItemValueType ValueType;
+        public string? RegistryKey { get; set; }
+        public string? ValueName { get; set; }
+        public string? Value { get; set; }
+
+        public string? DisplayName { get; set; }
+        /// <summary>
+        /// Дочерние элементы дочерних элементов PolicyElement (такая вот тавтология.) Нужно для типа valueList.
+        /// </summary>
+        public List<PolicyElementItemDefinition> Childs { get; set; } = new();
+
+        #region Fields only For Boolean
+        public string? IdName { get; set; }
+        public bool? Required { get; set; }
+        #endregion
+    }
+
+    public enum PolicyElementType
+    {
+        LIST,
+        ENUM,
+        BOOLEAN,
+        TEXT,
+        MULTITEXT,
+        DECIMAL
+    }
+
+    public enum PolicyChildType
+    {
+        ELEMENTS, 
+        ENABLED_LIST,
+        DISABLED_LIST,
+        //ENABLED_VALUE,
+        //DISABLED_VALUE
+    }
+
+    public enum PolicyElementItemType
+    {
+        VALUE,
+        VALUE_LIST
+    }
+
+    public enum PolicyElementItemValueType
+    {
+        DECIMAL,
+        STRING,
+        DELETE
     }
 }

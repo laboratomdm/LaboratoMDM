@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using LaboratoMDM.Core.Models.Policy;
 using Microsoft.Extensions.Logging;
@@ -211,15 +212,247 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
             return [];
 
         return elementsRoot.Elements()
-            .Select(e => new PolicyElementDefinition
+            .Select(e => 
             {
-                Type = e.Name.LocalName,
-                IdName = (string)e.Attribute("id")!,
-                ValueName = (string?)e.Attribute("valueName"),
-                MaxLength = (int?)e.Attribute("maxLength"),
-                Required = (bool?)e.Attribute("required") ?? false
+                var type = ResolvePolicyElementType(e.Name.LocalName.ToLowerInvariant());
+                return type switch
+                {
+                    PolicyElementType.LIST => ParseListType(e),
+                    PolicyElementType.DECIMAL => ParseDecimalType(e),
+                    PolicyElementType.TEXT => ParseTextType(e),
+                    PolicyElementType.MULTITEXT => ParseMultiTextType(e),
+                    _ => new PolicyElementDefinition
+                    {
+                        Type = type,
+                        IdName = (string)e.Attribute("id")!,
+                        ValueName = (string?)e.Attribute("valueName"),
+                        MaxLength = (int?)e.Attribute("maxLength"),
+                        Required = (bool?)e.Attribute("required") ?? false,
+                        Childs = ParseElementItems(e)
+                    }
+                };
             })
             .ToList();
+    }
+
+    private static List<PolicyElementItemDefinition> ParseElementItems(XElement element)
+    {
+        var type = ResolvePolicyElementType(element.Name.LocalName.ToLowerInvariant());
+
+        return type switch
+        {
+            PolicyElementType.ENUM => ParseEnumItems(element),
+            PolicyElementType.BOOLEAN => ParseBooleanType(element),
+            _ => throw new InvalidOperationException($"Has no child item definition for elements with type: {type}")
+        };
+    }
+    private static List<PolicyElementItemDefinition> ParseEnumItems(XElement elements)
+    {
+        var items = elements.Element(Ns + "item");
+        if(items == null)
+            return [];
+
+        return items.Elements().Select(item =>
+        {
+            var itemValue = ParseItemValue(item);
+            return new PolicyElementItemDefinition()
+            {
+                RegistryKey = item.Attribute("key")?.Value,
+                ValueName = item.Attribute("valueName")?.Value,
+                DisplayName = ExtractStringRef(item.Attribute("displayName")?.Value),
+                ParentType = PolicyChildType.ELEMENTS,
+                Type = PolicyElementItemType.VALUE,
+                ValueType = itemValue.Type,
+                Value = itemValue.Value,
+                Childs = ParseValueListType(item)
+            };
+        }).ToList();
+    }
+
+    private static List<PolicyElementItemDefinition> ParseValueListType(XElement valueListElement)
+    {
+        var items = valueListElement.Element(Ns + "item");
+        if(items == null)
+        {
+            return [];
+        }
+
+        return items.Elements().Select(item =>
+        {
+            var itemValue = ParseItemValue(item);
+            return new PolicyElementItemDefinition()
+            {
+                DisplayName = ExtractStringRef(item.Attribute("displayName")?.Value),
+                RegistryKey = item.Attribute("key")?.Value,
+                ValueName = item.Attribute("key")?.Value,
+                Value = itemValue.Value,
+                ValueType = itemValue.Type,
+                ParentType = PolicyChildType.ELEMENTS,
+                Type = PolicyElementItemType.VALUE_LIST
+            };
+        }).ToList();
+    }
+
+    private static List<PolicyElementItemDefinition> ParseBooleanType(XElement booleanElement)
+    {
+        var trueValueElement = booleanElement.Element("trueValue")?.Elements().FirstOrDefault()
+            ?? throw new ArgumentNullException("Boolean item type always should have trueValue.");
+        var falseValueElement = booleanElement.Element("falseValue")?.Elements().FirstOrDefault()
+            ?? throw new ArgumentNullException("Boolean item type always should have falseValue.");
+
+        var trueItemValue = ParseItemValue(trueValueElement);
+        var falseItemValue = ParseItemValue(falseValueElement);
+
+        var idName = booleanElement.Attribute("id")?.Value;
+        var registryKey = booleanElement.Attribute("key")?.Value;
+        var valueName = booleanElement.Attribute("valueName")?.Value;
+        var required = booleanElement.Attribute("required")?.Value;
+
+        var trueValueDefinition = new PolicyElementItemDefinition()
+        {
+            IdName = !string.IsNullOrEmpty(idName) ? idName : null,
+            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
+            ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
+            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+            Value = trueItemValue.Value,
+            ValueType = trueItemValue.Type
+        };
+
+        var falseValueDefinition = new PolicyElementItemDefinition()
+        {
+            IdName = !string.IsNullOrEmpty(idName) ? idName : null,
+            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
+            ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
+            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+            Value = falseItemValue.Value,
+            ValueType = falseItemValue.Type
+        };
+
+        return [trueValueDefinition, falseValueDefinition];
+    }
+
+    private static PolicyElementDefinition ParseListType(XElement element)
+    {
+        var additive = element.Attribute("additive")?.Value;
+        var explicitValue = element.Attribute("explicitValue")?.Value;
+
+        return new PolicyElementDefinition()
+        {
+            IdName = element.Attribute("id")?.Value
+                ?? throw new ArgumentNullException("List elements always should contain attribute id."),
+            Type = PolicyElementType.LIST,
+            RegistryKey = element.Attribute("key")?.Value,
+            ValueName = element.Attribute("valueName")?.Value,
+            ValuePrefix = element.Attribute("valuePrefix")?.Value,
+            Additive = !string.IsNullOrEmpty(additive) ? bool.Parse(additive) : null,
+            ExplicitValue = !string.IsNullOrEmpty(explicitValue) ? bool.Parse(explicitValue) : null,
+            ClientExtension = element.Attribute("clientExtension")?.Value
+        };
+    }
+
+
+
+    private static PolicyElementDefinition ParseDecimalType(XElement element)
+    {
+        var idName = element.Attribute("id")?.Value;
+        var registryKey = element.Attribute("key")?.Value;
+        var value = element.Attribute("value")?.Value;
+        var valueName = element.Attribute("valueName")?.Value;
+        var minValue = element.Attribute("minValue")?.Value;
+        var maxValue = element.Attribute("maxValue")?.Value;
+        var maxvalue = element.Attribute("maxvalue")?.Value;
+        var required = element.Attribute("required")?.Value;
+        var storeAsText = element.Attribute("storeAsText")?.Value;
+        var clientExtension = element.Attribute("clientExtension")?.Value;
+
+        return new PolicyElementDefinition()
+        {
+            IdName = !string.IsNullOrEmpty(idName) ? idName : null,
+            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
+            Value = !string.IsNullOrEmpty(value) ? int.Parse(value) : null,
+            ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
+            MinValue = !string.IsNullOrEmpty(minValue) ? long.Parse(minValue) : null,
+            MaxValue = !string.IsNullOrEmpty(maxValue) ? long.Parse(maxValue) : null,
+            Maxvalue = !string.IsNullOrEmpty(maxvalue) ? long.Parse(maxvalue) : null,
+            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+            StoreAsText = !string.IsNullOrEmpty(storeAsText) ? bool.Parse(storeAsText) : null,
+            ClientExtension = !string.IsNullOrEmpty(clientExtension) ? clientExtension : null
+        };
+    }
+
+    private static PolicyElementDefinition ParseTextType(XElement element)
+    {
+        var idName = element.Attribute("id")?.Value;
+        var registryKey = element.Attribute("key")?.Value;
+        var valueName = element.Attribute("valueName")?.Value;
+        var minValue = element.Attribute("minValue")?.Value;
+        var maxValue = element.Attribute("maxValue")?.Value;
+        var required = element.Attribute("required")?.Value;
+        var maxLength = element.Attribute("maxLength")?.Value;
+        var clientExtension = element.Attribute("clientExtension")?.Value;
+        var expandable = element.Attribute("expandable")?.Value;
+
+        return new PolicyElementDefinition()
+        {
+            IdName = !string.IsNullOrEmpty(idName) ? idName : null,
+            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
+            ValueName = !string.IsNullOrEmpty(valueName) ? valueName : null,
+            MinValue = !string.IsNullOrEmpty(minValue) ? long.Parse(minValue) : null,
+            MaxValue = !string.IsNullOrEmpty(maxValue) ? long.Parse(maxValue) : null,
+            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+            ClientExtension = !string.IsNullOrEmpty(clientExtension) ? clientExtension : null,
+            MaxLength = !string.IsNullOrEmpty(maxLength) ? int.Parse(maxLength) : null,
+            Expandable = !string.IsNullOrEmpty(expandable) ? bool.Parse(expandable) : null
+        };
+    }
+
+    private static PolicyElementDefinition ParseMultiTextType(XElement element)
+    {
+        var registryKey = element.Attribute("key")?.Value;
+        var required = element.Attribute("required")?.Value;
+        var maxLength = element.Attribute("maxLength")?.Value;
+        var maxStrings = element.Attribute("maxStrings")?.Value;
+
+        return new PolicyElementDefinition()
+        {
+            IdName = element.Attribute("id")?.Value,
+            RegistryKey = string.IsNullOrEmpty(registryKey) ? registryKey : null,
+            ValueName = element.Attribute("valueName")?.Value,
+            Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
+            MaxLength = !string.IsNullOrEmpty(maxLength) ? int.Parse(maxLength) : null,
+            MaxStrings = string.IsNullOrEmpty(maxStrings) ? int.Parse(maxStrings) : null
+        };
+    }
+
+    private static (PolicyElementItemValueType Type, string? Value) ParseItemValue(XElement item)
+    {
+        var type = item.Element(Ns + "value")?.Elements().FirstOrDefault();
+        if (type == null)
+        {
+            throw new InvalidOperationException($"Polciy elements item always should contait value elements.");
+        }
+
+        return type.Name.LocalName.ToLowerInvariant() switch
+        {
+            "delete" => (PolicyElementItemValueType.DELETE, null),
+            "decimal" => (PolicyElementItemValueType.DECIMAL, type.Attribute("value")?.Value),
+            "string" => (PolicyElementItemValueType.STRING, type.Value),
+            _ => throw new InvalidOperationException($"Has no elements item value type with name: {type.Name.LocalName.ToLowerInvariant()}")
+        };
+    }
+
+    private static PolicyElementType ResolvePolicyElementType(string tagName)
+    {
+        return tagName.ToLowerInvariant() switch
+        {
+            "list" => PolicyElementType.LIST,
+            "enum" => PolicyElementType.ENUM,
+            "text" => PolicyElementType.TEXT,
+            "multitext" => PolicyElementType.MULTITEXT,
+            "boolean" => PolicyElementType.BOOLEAN,
+            "decimal" => PolicyElementType.DECIMAL,
+            _ => throw new NotImplementedException($"Has no definition for elements with type: {tagName}")
+        };
     }
 
     private static string ExtractPresentationRef(string value)

@@ -2,6 +2,8 @@
 CREATE TABLE Policies (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     Name TEXT NOT NULL,
+    DisplayName TEXT,
+    ExplainText TEXT,
     Scope TEXT NOT NULL DEFAULT 'None', -- User, Machine, Both, None
     RegistryKey TEXT NOT NULL DEFAULT '',
     ValueName TEXT NOT NULL DEFAULT '',
@@ -10,6 +12,7 @@ CREATE TABLE Policies (
     SupportedOnRef TEXT,
     ParentCategoryRef TEXT,
     PresentationRef TEXT,
+    ClientExtension TEXT,
     Hash TEXT NOT NULL, -- хэш политики (для идентичности)
     CONSTRAINT chk_scope CHECK(Scope IN ('None', 'User', 'Machine', 'Both')),
     UNIQUE(Name, Hash)
@@ -38,6 +41,8 @@ CREATE TABLE PolicyElements (
 CREATE INDEX idx_elements_policyid ON PolicyElements(PolicyId);
 CREATE INDEX idx_elements_type ON PolicyElements(Type);
 CREATE INDEX idx_elements_valuename ON PolicyElements(ValueName);
+
+-- add table for policy element item (PolicyElementItems)
 
 -- Таблица загруженных ADMX файлов
 CREATE TABLE AdmxFiles (

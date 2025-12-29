@@ -24,6 +24,15 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
         }
 
         [Fact]
+        public void Should_Parse_Complex_ADMX_File()
+        {
+            var admxPath = @"C:\PolicyDefinitions\inetres.admx";
+            var provider = new AdmxPolicyProvider(admxPath, NullLogger<AdmxPolicyProvider>.Instance);
+
+            Assert.NotNull(provider);
+        }
+
+        [Fact]
         public void LoadPolicies_Should_Load_Policies_From_Admx_File()
         {
             // Arrange
@@ -91,8 +100,8 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
             var policy = provider.FindPolicy("FullPolicy");
 
             Assert.NotNull(policy);
-            Assert.Equal(1, policy!.EnabledValue);
-            Assert.Equal(0, policy.DisabledValue);
+            Assert.Equal("1", policy!.EnabledValue);
+            Assert.Equal("0", policy.DisabledValue);
             Assert.Equal(2, policy.ListKeys.Count);
             Assert.Contains("Key1", policy.ListKeys);
             Assert.Contains("Key2", policy.ListKeys);
