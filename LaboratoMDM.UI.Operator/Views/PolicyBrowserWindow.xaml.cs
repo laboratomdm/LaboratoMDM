@@ -29,28 +29,23 @@ namespace LaboratoMDM.UI.Operator.Views
             // ===== Root category =====
             var windows = new PolicyCategoryNodeViewModel(
                 id: "Windows",
-                displayName: "Windows",
-                explain: "Параметры операционной системы Windows");
+                displayName: "Windows");
 
             // ===== Subcategories =====
             var system = new PolicyCategoryNodeViewModel(
-                "System",
                 "System",
                 "Системные параметры Windows");
 
             var components = new PolicyCategoryNodeViewModel(
                 "Components",
-                "Windows Components",
                 "Компоненты Windows");
 
             var defender = new PolicyCategoryNodeViewModel(
                 "Defender",
-                "Microsoft Defender",
                 "Антивирусная защита");
 
             var edge = new PolicyCategoryNodeViewModel(
                 "Edge",
-                "Microsoft Edge",
                 "Настройки браузера Edge");
 
             // ===== Build tree =====
@@ -65,43 +60,37 @@ namespace LaboratoMDM.UI.Operator.Views
                 FakePolicy(
                     name: "DisableCMD",
                     display: "Запретить командную строку",
-                    explain: "Отключает доступ пользователей к cmd.exe",
                     scope: Core.Models.Policy.PolicyScope.User)));
 
             system.Policies.Add(new PolicyItemViewModel(
                 FakePolicy(
                     name: "DisableRegistryTools",
                     display: "Запретить редактор реестра",
-                    explain: "Блокирует запуск regedit.exe",
                     scope: Core.Models.Policy.PolicyScope.User)));
 
             defender.Policies.Add(new PolicyItemViewModel(
                 FakePolicy(
                     name: "DisableRealtimeProtection",
                     display: "Отключить защиту в реальном времени",
-                    explain: "Отключает постоянный мониторинг угроз",
                     scope: Core.Models.Policy.PolicyScope.Machine)));
 
             defender.Policies.Add(new PolicyItemViewModel(
                 FakePolicy(
                     name: "DisableCloudProtection",
                     display: "Отключить облачную защиту",
-                    explain: "Запрещает отправку данных в Microsoft",
                     scope: Core.Models.Policy.PolicyScope.Machine)));
 
             edge.Policies.Add(new PolicyItemViewModel(
                 FakePolicy(
                     name: "HomepageLocation",
                     display: "Домашняя страница",
-                    explain: "Указывает URL домашней страницы",
-                    scope: Core.Models.Policy.PolicyScope.User)));
+                    scope: Core.Models.Policy.PolicyScope.Both)));
 
             edge.Policies.Add(new PolicyItemViewModel(
                 FakePolicy(
                     name: "DisablePasswordManager",
                     display: "Отключить менеджер паролей",
-                    explain: "Запрещает сохранение паролей",
-                    scope: Core.Models.Policy.PolicyScope.User)));
+                    scope: Core.Models.Policy.PolicyScope.Both)));
 
             // ===== Add root =====
             vm.RootCategories.Add(windows);
@@ -119,14 +108,12 @@ namespace LaboratoMDM.UI.Operator.Views
         private static Core.Models.Policy.PolicyDefinition FakePolicy(
             string name,
             string display,
-            string explain,
             Core.Models.Policy.PolicyScope scope)
         {
             return new Core.Models.Policy.PolicyDefinition
             {
                 Name = name,
                 DisplayName = display,
-                ExplainText = explain,
                 Scope = scope,
                 RegistryKey = @"HKLM\Software\Policies\Test",
                 ValueName = name

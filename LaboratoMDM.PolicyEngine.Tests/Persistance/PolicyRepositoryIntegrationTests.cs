@@ -9,7 +9,7 @@ namespace LaboratoMDM.PolicyEngine.Tests.Persistance;
 public class PolicyRepositoryIntegrationTests(SqliteFileSchemaFixture fixture)
         : IClassFixture<SqliteFileSchemaFixture>
 {
-    private readonly PolicyRepository _repo = new PolicyRepository(fixture.Connection, new PolicyEntityMapper());
+    private readonly PolicyRepository _repo = new PolicyRepository(fixture.Connection, new PolicyEntityMapper(), new PolicyDetailsViewMapper());
 
     [Fact]
     public async Task CreateAndGetPolicy_FromFileSchema()
@@ -59,6 +59,14 @@ public class PolicyRepositoryIntegrationTests(SqliteFileSchemaFixture fixture)
         var context = new PolicyEvaluationContext(); // упрощённо
 
         var result = await _repo.FindApplicablePolicies(context);
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task GetByIdWithDetails_Should_Return_PolicyDerails()
+    {
+        var result = _repo.GetByIdWithDetails(761);
 
         Assert.NotNull(result);
     }

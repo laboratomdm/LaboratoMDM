@@ -35,6 +35,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<AgentServiceImpl>();
         services.AddSingleton<UserServiceImpl>();
         services.AddSingleton<AdmxServiceImpl>();
+        services.AddSingleton<PolicyCatalogServiceImpl>();
 
         services.AddGrpc();
 
@@ -49,6 +50,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IEntityMapper<AdmxFileEntity>, AdmxFileEntityMapper>();
         services.AddSingleton<IEntityMapper<PolicyNamespaceEntity>, PolicyNamespaceEntityMapper>();
         services.AddSingleton<IEntityMapper<PolicyCategoryEntity>, PolicyCategoryEntityMapper>();
+        services.AddSingleton<IEntityMapper<IReadOnlyList<PolicyCategoryView>>, PolicyCategoryViewMapper>();
         services.AddSingleton<IEntityMapper<PolicyEntity>, PolicyEntityMapper>();
         services.AddSingleton<IEntityMapper<Translation>, TranslationEntityMapper>();
 
@@ -95,6 +97,7 @@ var host = Host.CreateDefaultBuilder(args)
                 endpoints.MapGrpcService<AgentServiceImpl>();
                 endpoints.MapGrpcService<UserServiceImpl>();
                 endpoints.MapGrpcService<AdmxServiceImpl>();
+                endpoints.MapGrpcService<PolicyCatalogServiceImpl>();
             });
         });
     })

@@ -1,5 +1,6 @@
 ﻿using LaboratoMDM.Core.Models.Policy;
 using LaboratoMDM.PolicyEngine.Domain;
+using LaboratoMDM.PolicyEngine.Persistence;
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
 using LaboratoMDM.PolicyEngine.Services.Abstractions;
 
@@ -26,5 +27,8 @@ namespace LaboratoMDM.PolicyEngine.Services
         public Task<IReadOnlyList<PolicyEntity>> FindApplicable(
             PolicyEvaluationContext context)
             => _repo.FindApplicablePolicies(context);
+
+        public Task<IReadOnlyList<PolicyGroupDto>> GetPoliciesGroupedByScope(string langCode)
+            => _repo.GetPoliciesGroupedByScope(langCode);
     }
 }

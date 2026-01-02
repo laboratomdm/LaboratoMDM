@@ -211,7 +211,6 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
         {
             Name = c.Name,
             DisplayName = c.DisplayName,
-            ExplainText = c.ExplainText ?? string.Empty,
             ParentCategoryName = c.ParentCategory?.Name ?? string.Empty
         };
     }

@@ -13,12 +13,9 @@ public sealed class AdmlTranslationProvider : ITranslationProvider
     private readonly string _admlFilePath;
     private readonly string _admlFileName;
 
-    private readonly Dictionary<(string Id, string Lang), Translation> _translations =
-        new();
+    private readonly Dictionary<(string Id, string Lang), Translation> _translations = new();
 
-    public AdmlTranslationProvider(
-        string admlFilePath,
-        ILogger logger)
+    public AdmlTranslationProvider(string admlFilePath, ILogger logger)
     {
         _admlFilePath = admlFilePath;
         _admlFileName = Path.GetFileNameWithoutExtension(admlFilePath);
@@ -44,7 +41,6 @@ public sealed class AdmlTranslationProvider : ITranslationProvider
         var langCode = ExtractLangCode(_admlFilePath);
 
         ParseStringTable(doc, langCode);
-        ParseResources(doc, langCode);
 
         _logger.LogInformation(
             "Loaded {Count} translations from {File}",
@@ -54,48 +50,20 @@ public sealed class AdmlTranslationProvider : ITranslationProvider
 
     private void ParseStringTable(XDocument doc, string lang)
     {
-        var table = doc.Descendants("stringTable").SingleOrDefault();
+        // Получаем namespace корневого элемента
+        XNamespace ns = doc.Root?.Name.Namespace ?? "";
+
+        var table = doc.Descendants(ns + "stringTable").SingleOrDefault();
         if (table == null)
             return;
 
-        foreach (var s in table.Elements("string"))
+        foreach (var s in table.Elements(ns + "string"))
         {
             var id = (string?)s.Attribute("id");
             if (!IsValidStringId(id))
                 continue;
 
             AddTranslation(id!, lang, s.Value);
-        }
-    }
-
-    private void ParseResources(XDocument doc, string lang)
-    {
-        var resources = doc.Descendants("resources").SingleOrDefault();
-        if (resources == null)
-            return;
-
-        foreach (var s in resources.Elements("string"))
-        {
-            var id = (string?)s.Attribute("id");
-            if (!IsValidStringId(id))
-                continue;
-
-            AddTranslation(id!, lang, s.Value);
-        }
-    }
-
-    private void ExtractFromElement(XElement el, string lang)
-    {
-        var refId = (string?)el.Attribute("refId");
-        if (IsValidStringId(refId))
-        {
-            AddTranslation(refId!, lang, el.Value);
-        }
-
-        var valuePrefix = (string?)el.Attribute("valuePrefix");
-        if (IsValidStringId(valuePrefix))
-        {
-            AddTranslation(valuePrefix!, lang, el.Value);
         }
     }
 
@@ -147,7 +115,6 @@ public sealed class AdmlTranslationProvider : ITranslationProvider
             throw new InvalidOperationException(
                 $"Cannot determine language code from path: {admlFilePath}");
 
-        // Проверяем, что это валидная locale
         try
         {
             _ = CultureInfo.GetCultureInfo(langCode);
@@ -161,16 +128,14 @@ public sealed class AdmlTranslationProvider : ITranslationProvider
     }
 
     private static bool IsValidStringId(string? id) =>
-        !string.IsNullOrWhiteSpace(id) &&
-        id.Length <= 255 &&
-        !id.Contains('\0');
+        !string.IsNullOrWhiteSpace(id) && !id.Contains('\0');
 
     private static string CleanText(string text) =>
         string.IsNullOrWhiteSpace(text)
             ? string.Empty
             : text.Trim()
-                .Replace("\r\n", " ")
-                .Replace("\n", " ")
-                .Replace("\t", " ")
-                .Trim();
+                  .Replace("\r\n", " ")
+                  .Replace("\n", " ")
+                  .Replace("\t", " ")
+                  .Trim();
 }

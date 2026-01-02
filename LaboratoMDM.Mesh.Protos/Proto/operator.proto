@@ -174,6 +174,9 @@ service PolicyCatalogService {
 
   rpc GetPolicy (GetPolicyRequest)
       returns (PolicyDescriptor);
+
+  rpc ListPoliciesGroupedByScope (ListPoliciesGroupedByScopeRequest)
+      returns (ListPoliciesGroupedByScopeResponse);
 }
 
 message ListPoliciesRequest {
@@ -188,6 +191,14 @@ message GetPolicyRequest {
   string policy_hash = 1;
 }
 
+message ListPoliciesGroupedByScopeRequest {
+  string lang_code = 1; // язык для перевода displayName
+}
+
+message ListPoliciesGroupedByScopeResponse {
+  repeated PolicyGroup groups = 1;
+}
+
 message PolicyDescriptor {
   string policy_hash = 1;
   string name = 2;
@@ -197,8 +208,8 @@ message PolicyDescriptor {
   string registry_key = 4;
   string value_name = 5;
 
-  int32 enabled_value = 6;
-  int32 disabled_value = 7;
+  string enabled_value = 6;
+  string disabled_value = 7;
 
   string supported_on_ref = 8;
   string parent_category = 9;
@@ -220,6 +231,17 @@ message PolicyElement {
   bool required = 5;
 
   string client_extension = 6;
+}
+
+message PolicyGroup {
+  string scope = 1; // например "User", "Machine", "Both", "None"
+  repeated PolicySummary policies = 2;
+}
+
+message PolicySummary {
+  int64 id = 1;
+  string name = 2;
+  string display_name = 3;
 }
 
 // POLICY ASSIGNMENT

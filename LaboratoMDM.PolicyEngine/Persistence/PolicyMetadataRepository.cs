@@ -2,16 +2,19 @@
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
 using LaboratoMDM.PolicyEngine.Persistence.Mapping;
 using Microsoft.Data.Sqlite;
+using System.Collections.Generic;
 
 namespace LaboratoMDM.PolicyEngine.Persistence
 {
     public sealed class PolicyMetadataRepository(
         SqliteConnection connection,
         IEntityMapper<PolicyCategoryEntity> categoryMapper,
+        IEntityMapper<IReadOnlyList<PolicyCategoryView>> categoryViewMapper,
         IEntityMapper<PolicyNamespaceEntity> namespaceMapper): IPolicyMetadataRepository
     {
         private readonly SqliteConnection _connection = connection;
         private readonly IEntityMapper<PolicyCategoryEntity> _categoryMapper = categoryMapper;
+        private readonly IEntityMapper<IReadOnlyList<PolicyCategoryView>> _categoryViewMapper = categoryViewMapper;
         private readonly IEntityMapper<PolicyNamespaceEntity> _namespaceMapper = namespaceMapper;
 
         #region Categories
@@ -68,8 +71,8 @@ namespace LaboratoMDM.PolicyEngine.Persistence
 
             cmd.CommandText = """
                 INSERT OR IGNORE INTO PolicyCategories
-                (Name, ParentCategoryRef, DisplayName, ExplainText)
-                VALUES (@name, @parent, @dn, @et)
+                (Name, ParentCategoryRef, DisplayName)
+                VALUES (@name, @parent, @dn)
             """;
 
             var name = cmd.CreateParameter();
@@ -84,10 +87,6 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             dn.ParameterName = "@dn";
             cmd.Parameters.Add(dn);
 
-            var et = cmd.CreateParameter();
-            et.ParameterName = "@et";
-            cmd.Parameters.Add(et);
-
             foreach (var c in categories)
             {
                 name.Value = c.Name;
@@ -95,8 +94,6 @@ namespace LaboratoMDM.PolicyEngine.Persistence
                         ? c.ParentCategoryRef
                         : DBNull.Value;
                 dn.Value = c.DisplayName;
-                et.Value = !string.IsNullOrEmpty(c.ExplainText)
-                    ? c.ExplainText : DBNull.Value;
 
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -104,21 +101,60 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             await tx.CommitAsync();
         }
 
-        public async Task<IReadOnlyList<PolicyCategoryEntity>> GetCategoryTree()
+        public async Task<IReadOnlyList<PolicyCategoryView>> GetCategoryTree()
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                SELECT * FROM PolicyCategories
-                ORDER BY ParentCategoryId, Name
+              WITH RootCategories AS (
+                SELECT
+                    c.Id,
+                    c.Name AS CategoryName,
+                    c.DisplayName,
+                    c.ExplainText
+                FROM PolicyCategories c
+                WHERE c.ParentCategoryRef IS NULL OR c.ParentCategoryRef = ''
+            ),
+            -- Уровень 1: Вложенные категории
+            ChildCategories AS (
+                SELECT
+                    c.Id,
+                    c.Name AS CategoryName,
+                    c.DisplayName,
+                    c.ExplainText,
+                    -- берём правую часть после ':' если есть
+                    CASE 
+                        WHEN instr(c.ParentCategoryRef, ':') > 0 THEN substr(c.ParentCategoryRef, instr(c.ParentCategoryRef, ':') + 1)
+                        ELSE c.ParentCategoryRef
+                    END AS ParentName
+                FROM PolicyCategories c
+                WHERE c.ParentCategoryRef IS NOT NULL AND c.ParentCategoryRef != ''
+            )
+            SELECT json_group_array(
+                json_object(
+                    'CategoryName', r.CategoryName,
+                    'DisplayName', r.DisplayName,
+                    'ExplainText', r.ExplainText,
+                    'Children', (
+                        SELECT json_group_array(
+                            json_object(
+                                'CategoryName', ch.CategoryName,
+                                'DisplayName', ch.DisplayName,
+                                'ExplainText', ch.ExplainText
+                            )
+                        )
+                        FROM ChildCategories ch
+                        WHERE ch.ParentName = r.CategoryName
+                    )
+                )
+            ) AS CategoryTreeJson
+            FROM RootCategories r;
             """;
 
             using var reader = await cmd.ExecuteReaderAsync();
-            var result = new List<PolicyCategoryEntity>();
+            if (!await reader.ReadAsync())
+                throw new InvalidOperationException("Failed to load category tree");
 
-            while (await reader.ReadAsync())
-                result.Add(_categoryMapper.Map(reader));
-
-            return result;
+            return _categoryViewMapper.Map(reader);
         }
 
         #endregion

@@ -13,8 +13,7 @@ namespace LaboratoMDM.UI.Operator.Utils
                 c => c.Name,
                 c => new PolicyCategoryNodeViewModel(
                     c.Name,
-                    c.DisplayName,
-                    c.ExplainText));
+                    c.DisplayName));
 
             // Строим иерархию
             foreach (var cat in categories)

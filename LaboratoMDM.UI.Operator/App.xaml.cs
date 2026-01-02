@@ -42,11 +42,11 @@ namespace LaboratoMDM.UI.Operator
             //var window = Services.GetRequiredService<AgentWindow>();
             //window.Show();
 
-            //var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
-            //policyEditorWindow.Show();
+            var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
+            policyEditorWindow.Show();
 
-            var policyBrowserWindow = new PolicyBrowserWindow();
-            policyBrowserWindow.Show();
+            //var policyBrowserWindow = new PolicyBrowserWindow();
+            //policyBrowserWindow.Show();
         }
     }
 }

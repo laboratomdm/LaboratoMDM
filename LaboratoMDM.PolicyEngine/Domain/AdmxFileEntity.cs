@@ -33,7 +33,6 @@ namespace LaboratoMDM.PolicyEngine.Domain
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
-        public string? ExplainText { get; set; }
         public string? ParentCategoryRef { get; set; }
         public PolicyCategoryEntity? ParentCategory { get; set; }
         public int AdmxFileId { get; set; }
@@ -74,7 +73,6 @@ namespace LaboratoMDM.PolicyEngine.Domain
             {
                 Name = def.Name,
                 DisplayName = def.DisplayName,
-                ExplainText = def.ExplainText,
                 ParentCategoryRef = def.ParentCategoryRef,
                 AdmxFileId = admxFileId
             };
@@ -91,7 +89,6 @@ namespace LaboratoMDM.PolicyEngine.Domain
             {
                 Name = entity.Name,
                 DisplayName = entity.DisplayName,
-                ExplainText = entity.ExplainText,
                 ParentCategoryRef = entity.ParentCategoryRef
             };
         }

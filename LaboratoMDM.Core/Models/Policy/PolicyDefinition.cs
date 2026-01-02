@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace LaboratoMDM.Core.Models.Policy
@@ -76,11 +77,6 @@ namespace LaboratoMDM.Core.Models.Policy
         /// DisplayName (string-id из ADML или raw fallback)
         /// </summary>
         public string DisplayName { get; init; } = string.Empty;
-
-        /// <summary>
-        /// Explain text (string-id из ADML или raw fallback)
-        /// </summary>
-        public string? ExplainText { get; init; }
     }
 
     /// <summary>
@@ -239,6 +235,18 @@ namespace LaboratoMDM.Core.Models.Policy
         public string? IdName { get; set; }
         public bool? Required { get; set; }
         #endregion
+    }
+
+    public sealed class PolicyJsonWrapper
+    {
+        [JsonPropertyName("Policy")]
+        public PolicyDefinition Policy { get; set; } = new();
+
+        //[JsonPropertyName("Presentation")]
+        //public Presintation Presintation{ get; set; }
+
+        [JsonPropertyName("PolicyElements")]
+        public List<PolicyElementDefinition> PolicyElements { get; set; } = new();
     }
 
     public enum PolicyElementType

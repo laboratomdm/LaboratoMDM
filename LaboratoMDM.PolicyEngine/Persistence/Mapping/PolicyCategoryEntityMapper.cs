@@ -12,6 +12,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Mapping
             {
                 Id = r.GetInt32(r.GetOrdinal("Id")),
                 Name = r.GetString(r.GetOrdinal("Name")),
+                DisplayName = r.GetString(r.GetOrdinal("DisplayName")),
                 ParentCategoryRef = r.IsDBNull(r.GetOrdinal("ParentCategoryRef"))
                     ? null
                     : r.GetString(r.GetOrdinal("ParentCategoryRef"))

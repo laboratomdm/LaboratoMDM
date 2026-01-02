@@ -1,8 +1,10 @@
 ﻿#nullable enable
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using LaboratoMDM.Core.Models.Policy;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace LaboratoMDM.PolicyEngine.Implementations;
 
@@ -104,13 +106,9 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
         return doc.Descendants(Ns + "category")
             .Select(c => new PolicyCategoryDefinition
             {
-                Name = (string)c.Attribute("name")!,
-                ParentCategoryRef =
-                    c.Element(Ns + "parentCategory")?.Attribute("ref")?.Value,
-                DisplayName =
-                    (string?)c.Attribute("displayName") ?? string.Empty,
-                ExplainText =
-                    c.Element(Ns + "explainText")?.Value?.Trim()
+                Name = c.Attribute("name")!.Value,
+                ParentCategoryRef = c.Element(Ns + "parentCategory")?.Attribute("ref")?.Value,
+                DisplayName = ExtractStringRef(c.Attribute("displayName")?.Value) ?? string.Empty
             })
             .ToList();
     }
@@ -181,6 +179,16 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
                 }
 
                 var categoryName = p.Elements(Ns + "parentCategory").FirstOrDefault()?.Attribute("ref")?.Value;
+
+                var enableValue = ParseEnableAndDisableValue(p.Element(Ns + "enabledValue")).Value;
+                var disableValue = ParseEnableAndDisableValue(p.Element(Ns + "disabledValue")).Value;
+
+                var result = new List<PolicyElementDefinition>();
+
+                result.AddRange(ParseElements(p));
+                result.AddRange(ParseEnabledAndDisabledListElements(p, true));
+                result.AddRange(ParseEnabledAndDisabledListElements(p, false));
+
                 return new PolicyDefinition
                 {
                     Name = (string)p.Attribute("name")!,
@@ -200,9 +208,26 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
                     SupportedOnRef =
                         p.Element(Ns + "supportedOn")?.Attribute("ref")?.Value,
                     
-                    Elements = ParseElements(p)
+                    EnabledValue = enableValue == null ? "1" : enableValue,
+                    DisabledValue = disableValue == null ? "0" : disableValue,
+
+                    Elements = result
                 };
             });
+    }
+
+    private static IReadOnlyList<PolicyElementDefinition> ParseEnabledAndDisabledListElements(XElement policy, bool enableList)
+    {
+        var elementsRoot = policy.Element(Ns + (enableList ? "enabledList" : "disabledList"));
+        if (elementsRoot == null)
+            return [];
+
+        return [new PolicyElementDefinition
+        {
+            Type = PolicyElementType.LIST,
+            IdName = string.Empty,
+            Childs = ParseEnabledAndDisabledListItem(elementsRoot)
+        }];
     }
 
     private static IReadOnlyList<PolicyElementDefinition> ParseElements(XElement policy)
@@ -235,6 +260,24 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
             .ToList();
     }
 
+    private static List<PolicyElementItemDefinition> ParseEnabledAndDisabledListItem(XElement list)
+    {
+        var parrentType = list.Name.LocalName.ToLowerInvariant().Equals("enabledlist") ? PolicyChildType.ENABLED_LIST : PolicyChildType.DISABLED_LIST;
+        return list.Elements().Select(item =>
+            {
+                var value = ParseItemValue(item);
+                return new PolicyElementItemDefinition()
+                {
+                    ParentType = parrentType,
+                    RegistryKey = item.Attribute("key")?.Value,
+                    ValueName = item.Attribute("valueName")?.Value,
+                    Value = value.Value,
+                    ValueType = value.Type
+                };
+            })
+            .ToList();
+    }
+
     private static List<PolicyElementItemDefinition> ParseElementItems(XElement element)
     {
         var type = ResolvePolicyElementType(element.Name.LocalName.ToLowerInvariant());
@@ -243,7 +286,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
         {
             PolicyElementType.ENUM => ParseEnumItems(element),
             PolicyElementType.BOOLEAN => ParseBooleanType(element),
-            _ => throw new InvalidOperationException($"Has no child item definition for elements with type: {type}")
+            _ => throw new InvalidOperationException($"Has no child list definition for elements with type: {type}")
         };
     }
     private static List<PolicyElementItemDefinition> ParseEnumItems(XElement elements)
@@ -252,7 +295,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
         if(items == null)
             return [];
 
-        return items.Elements().Select(item =>
+        return items.Select(item =>
         {
             (PolicyElementItemValueType? Type, string? Value) itemValue = (null, null);
             try { itemValue = ParseItemValue(item); } catch { /* ignore */ }
@@ -273,7 +316,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
 
     private static List<PolicyElementItemDefinition> ParseValueListType(XElement valueListElement)
     {
-        var items = valueListElement.Elements(Ns + "item");
+        var items = valueListElement.Elements(Ns + "valueList");
         if(items == null)
         {
             return [];
@@ -419,7 +462,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
 
         return new PolicyElementDefinition()
         {
-            IdName = element.Attribute("id")?.Value ?? throw new ArgumentNullException("MultiText policy item always should contain id attribute."),
+            IdName = element.Attribute("id")?.Value ?? throw new ArgumentNullException("MultiText policy list always should contain id attribute."),
             RegistryKey = !string.IsNullOrEmpty(registryKey) ? registryKey : null,
             ValueName = element.Attribute("valueName")?.Value,
             Required = !string.IsNullOrEmpty(required) ? bool.Parse(required) : null,
@@ -429,17 +472,12 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
         };
     }
 
-    private static (PolicyElementItemValueType Type, string? Value) ParseItemValue(XElement? item)
+    private static (PolicyElementItemValueType? Type, string? Value) ParseEnableAndDisableValue(XElement? element)
     {
-        if (!item?.Name.LocalName.ToLowerInvariant().Equals("value") ?? false)
-        {
-            item = item?.Element(Ns + "value")?.Elements().FirstOrDefault();
-        }
-
-        var type = item?.Elements().FirstOrDefault();
+        var type = element?.Elements().FirstOrDefault();
         if (type == null)
         {
-            throw new InvalidOperationException($"Polciy elements item always should contait value elements.");
+            return (null, null);
         }
 
         return type.Name.LocalName.ToLowerInvariant() switch
@@ -447,21 +485,43 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
             "delete" => (PolicyElementItemValueType.DELETE, null),
             "decimal" => (PolicyElementItemValueType.DECIMAL, type.Attribute("value")?.Value),
             "string" => (PolicyElementItemValueType.STRING, type.Value),
-            _ => throw new InvalidOperationException($"Has no elements item value type with name: {type.Name.LocalName.ToLowerInvariant()}")
+            _ => throw new InvalidOperationException($"Has no elements list value type with name: {type.Name.LocalName.ToLowerInvariant()}")
+        };
+    }
+
+    private static (PolicyElementItemValueType Type, string? Value) ParseItemValue(XElement? item)
+    {
+        if (!item?.Name.LocalName.ToLowerInvariant().Equals("value") ?? false)
+        {
+            item = item?.Element(Ns + "value");
+        }
+
+        var type = item?.Elements().FirstOrDefault();
+        if (type == null)
+        {
+            throw new InvalidOperationException($"Polciy elements list always should contait value elements.");
+        }
+
+        return type.Name.LocalName.ToLowerInvariant() switch
+        {
+            "delete" => (PolicyElementItemValueType.DELETE, null),
+            "decimal" => (PolicyElementItemValueType.DECIMAL, type.Attribute("value")?.Value),
+            "string" => (PolicyElementItemValueType.STRING, type.Value),
+            _ => throw new InvalidOperationException($"Has no elements list value type with name: {type.Name.LocalName.ToLowerInvariant()}")
         };
     }
 
     private static (PolicyElementItemValueType Type, string? Value) ParseBooleanValue(XElement? item) {
         if (item == null) 
         {
-            throw new InvalidOperationException($"Polciy elements item always should contait value elements.");
+            throw new InvalidOperationException($"Polciy elements list always should contait value elements.");
         }
         return item.Name.LocalName.ToLowerInvariant() switch
         {
             "delete" => (PolicyElementItemValueType.DELETE, null),
             "decimal" => (PolicyElementItemValueType.DECIMAL, item.Attribute("value")?.Value),
             "string" => (PolicyElementItemValueType.STRING, item.Value),
-            _ => throw new InvalidOperationException($"Has no elements item value type with name: {item.Name.LocalName.ToLowerInvariant()}")
+            _ => throw new InvalidOperationException($"Has no elements list value type with name: {item.Name.LocalName.ToLowerInvariant()}")
         };
     }
 

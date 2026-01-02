@@ -111,7 +111,7 @@ CREATE TABLE PolicyNamespaces (
     Namespace TEXT NOT NULL,
     AdmxFileId INTEGER NOT NULL,
     FOREIGN KEY (AdmxFileId) REFERENCES AdmxFiles(Id) ON DELETE CASCADE,
-    UNIQUE(Prefix, AdmxFileId)
+    UNIQUE(Prefix, Namespace)
 );
 
 CREATE INDEX idx_namespaces_prefix ON PolicyNamespaces(Prefix);
@@ -122,7 +122,6 @@ CREATE TABLE PolicyCategories (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     Name TEXT NOT NULL UNIQUE,
     DisplayName TEXT NOT NULL,
-    ExplainText TEXT,
     ParentCategoryRef TEXT
 );
 

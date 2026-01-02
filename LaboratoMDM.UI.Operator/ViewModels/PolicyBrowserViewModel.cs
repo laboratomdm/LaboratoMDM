@@ -73,8 +73,7 @@ namespace LaboratoMDM.UI.Operator.ViewModels
             }
 
             bool hasPolicyMatch = node.Policies.Any(p =>
-                p.Name.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                (p.ExplainText?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false));
+                p.Name.Contains(text, StringComparison.OrdinalIgnoreCase));
 
             node.IsVisible = string.IsNullOrWhiteSpace(text)
                              || hasPolicyMatch

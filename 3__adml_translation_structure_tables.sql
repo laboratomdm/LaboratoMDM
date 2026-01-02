@@ -8,5 +8,5 @@ CREATE TABLE Translations (
     UNIQUE(StringId, LangCode)
 );
 
-CREATE INDEX idx_lang_string ON Translations(LangCode, LangCode);
+CREATE INDEX idx_lang_string ON Translations(StringId, LangCode);
 CREATE INDEX idx_filename ON Translations(AdmlFilename);

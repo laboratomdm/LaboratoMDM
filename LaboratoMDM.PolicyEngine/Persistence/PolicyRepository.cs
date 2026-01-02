@@ -3,9 +3,23 @@ using LaboratoMDM.PolicyEngine.Domain;
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
 using LaboratoMDM.PolicyEngine.Persistence.Mapping;
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 
 namespace LaboratoMDM.PolicyEngine.Persistence
 {
+    public sealed class PolicyDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
+    }
+
+    public sealed class PolicyGroupDto
+    {
+        public string Scope { get; set; } = null!;
+        public List<PolicyDto> Policies { get; set; } = new();
+    }
+
     public sealed class PolicyRepository(
         SqliteConnection conn,
         IEntityMapper<PolicyEntity> mapper) : IPolicyRepository
@@ -18,6 +32,194 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             using var cmd = _conn.CreateCommand("""
                 SELECT * FROM Policies WHERE Id = @id
             """);
+
+            cmd.Parameters.AddWithValue("@id", policyId);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            return await reader.ReadAsync() ? _mapper.Map(reader) : null;
+        }
+
+        public async Task<PolicyEntity?> GetByIdWithDetails(int policyId)
+        {
+            using var cmd = _conn.CreateCommand("""
+                    WITH
+                -- -------------------------
+                -- policy base
+                -- -------------------------
+                policy_base AS (
+                    SELECT
+                        pol.Id,
+                        pol.Name,
+                        pol.Scope,
+                        pol.RegistryKey,
+                        pol.ValueName,
+                        pol.EnabledValue,
+                        pol.DisabledValue,
+                        pol.ParentCategoryRef,
+                        pol.SupportedOnRef,
+                        pol.PresentationRef,
+                        pol.ClientExtension,
+                        pol.Hash
+                    FROM Policies pol
+                    WHERE pol.Id = @id
+                ),
+
+                -- -------------------------
+                -- presentation
+                -- -------------------------
+                presentation_base AS (
+                    SELECT
+                        p.Id,
+                        p.PresentationId,
+                        p.AdmlFile
+                    FROM Presentations p
+                    JOIN Policies pol ON pol.PresentationRef = p.PresentationId
+                    WHERE pol.Id = @id
+                ),
+
+                -- -------------------------
+                -- presentation elements
+                -- -------------------------
+                presentation_elements AS (
+                    SELECT
+                        pe.Id,
+                        pe.PresentationId,
+                        pe.ElementType,
+                        pe.RefId,
+                        pe.ParentElementId,
+                        pe.DefaultValue,
+                        pe.DisplayOrder,
+                        pt.TextValue
+                    FROM PresentationElements pe
+                    LEFT JOIN PresentationTranslations pt
+                        ON pt.PresentationElementId = pe.Id
+                       AND pt.LangCode = 'ru-RU'
+                ),
+
+                -- -------------------------
+                -- policy elements
+                -- -------------------------
+                policy_elements AS (
+                    SELECT
+                        pole.Id,
+                        pole.PolicyId,
+                        pole.ElementId,
+                        pole.Type,
+                        pole.ValueName,
+                        pole.Required,
+                        pole.MaxLength,
+                        pole.ClientExtension,
+                        pole.ValuePrefix,
+                        pole.ExplicitValue,
+                        pole.Additive,
+                        pole.MinValue,
+                        pole.MaxValue,
+                        pole.StoreAsText,
+                        pole.Expandable,
+                        pole.MaxStrings
+                    FROM PolicyElements pole
+                    WHERE pole.PolicyId = :policyId
+                ),
+
+                -- -------------------------
+                -- policy element items
+                -- -------------------------
+                policy_element_items AS (
+                    SELECT
+                        pei.Id,
+                        pei.PolicyElementId,
+                        pei.Name,
+                        pei.ParentType,
+                        pei.Type,
+                        pei.ValueType,
+                        pei.RegistryKey,
+                        pei.ValueName,
+                        pei.Value,
+                        pei.Required,
+                        pei.ParentId,
+                        t.TextValue AS DisplayName
+                    FROM PolicyElementItems pei
+                    LEFT JOIN Translations t
+                        ON t.StringId = pei.DisplayName
+                       AND t.LangCode = 'ru-RU'
+                )
+
+                SELECT json_object(
+                    'policy', json_object(
+                        'id', pb.Id,
+                        'name', pb.Name,
+                        'hash', pb.Hash,
+                        'scope', pb.Scope,
+                        'registry', json_object(
+                            'key', pb.RegistryKey,
+                            'valueName', pb.ValueName,
+                            'enabledValue', pb.EnabledValue,
+                            'disabledValue', pb.DisabledValue
+                        ),
+                        'parentCategoryRef', pb.ParentCategoryRef,
+                        'supportedOnRef', pb.SupportedOnRef,
+                        'clientExtension', pb.ClientExtension
+                    ),
+
+                    'presentation', (
+                        SELECT json_object(
+                            'id', pr.Id,
+                            'presentationId', pr.PresentationId,
+                            'admlFile', pr.AdmlFile,
+                            'elements', (
+                                SELECT json_group_array(
+                                    json_object(
+                                        'id', pe.Id,
+                                        'type', pe.ElementType,
+                                        'refId', pe.RefId,
+                                        'parentElementId', pe.ParentElementId,
+                                        'defaultValue', pe.DefaultValue,
+                                        'displayOrder', pe.DisplayOrder,
+                                        'text', pe.TextValue
+                                    )
+                                )
+                                FROM presentation_elements pe
+                                WHERE pe.PresentationId = pr.Id
+                            )
+                        )
+                        FROM presentation_base pr
+                    ),
+
+                    'policyElements', (
+                        SELECT json_group_array(
+                            json_object(
+                                'id', pe.Id,
+                                'elementId', pe.ElementId,
+                                'type', pe.Type,
+                                'valueName', pe.ValueName,
+                                'required', pe.Required,
+                                'maxLength', pe.MaxLength,
+                                'items', (
+                                    SELECT json_group_array(
+                                        json_object(
+                                            'id', i.Id,
+                                            'name', i.Name,
+                                            'parentType', i.ParentType,
+                                            'type', i.Type,
+                                            'valueType', i.ValueType,
+                                            'registryKey', i.RegistryKey,
+                                            'valueName', i.ValueName,
+                                            'value', i.Value,
+                                            'required', i.Required,
+                                            'parentId', i.ParentId,
+                                            'displayName', i.DisplayName
+                                        )
+                                    )
+                                    FROM policy_element_items i
+                                    WHERE i.PolicyElementId = pe.Id
+                                )
+                            )
+                        )
+                        FROM policy_elements pe
+                    )
+                ) as PolicyDetails
+                FROM policy_base pb;
+                """);
 
             cmd.Parameters.AddWithValue("@id", policyId);
 
@@ -324,6 +526,51 @@ WHERE PolicyId = @pid AND ElementId = @eid;
             while (await reader.ReadAsync())
                 list.Add(_mapper.Map(reader));
             return list;
+        }
+
+        public async Task<IReadOnlyList<PolicyGroupDto>> GetPoliciesGroupedByScope(string langCode)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT 
+                    p.Scope, 
+                    json_group_array(
+                        json_object(
+                            'Id', p.Id,
+                            'Name', p.Name,
+                            'DisplayName', IFNULL(t.TextValue, p.DisplayName)
+                        )
+                    ) AS policies
+                FROM Policies p
+                LEFT JOIN Translations t
+                    ON t.StringId = p.DisplayName
+                   AND t.LangCode = @langCode
+                GROUP BY p.Scope;
+            """;
+
+            cmd.Parameters.AddWithValue("@langCode", langCode);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            var result = new List<PolicyGroupDto>();
+
+            while (await reader.ReadAsync())
+            {
+                var scope = reader.GetString(0);
+                var json = reader.GetString(1);
+
+                var policies = string.IsNullOrWhiteSpace(json)
+                    ? new List<PolicyDto>()
+                    : JsonSerializer.Deserialize<List<PolicyDto>>(json)
+                      ?? new List<PolicyDto>();
+
+                result.Add(new PolicyGroupDto
+                {
+                    Scope = scope,
+                    Policies = policies
+                });
+            }
+
+            return result;
         }
     }
 }

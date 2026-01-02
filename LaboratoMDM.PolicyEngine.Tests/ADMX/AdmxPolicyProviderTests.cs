@@ -28,7 +28,7 @@ namespace LaboratoMDM.PolicyEngine.Tests.ADMX
         {
             var admxPath = @"C:\PolicyDefinitions\inetres.admx";
             var provider = new AdmxPolicyProvider(admxPath, NullLogger<AdmxPolicyProvider>.Instance);
-            var tabPolicy = provider.LoadPolicies().FirstOrDefault(x => x.Name.Equals("TabOpenInFgndBgnd"));
+            var tabPolicy = provider.LoadPolicies().FirstOrDefault(x => x.Name.Equals("IZ_PolicyAllowMETAREFRESH_4"));
             var tabPolicyElements = tabPolicy.Elements;
             var tabPolicyElementItems = tabPolicyElements[0].Childs;
             Assert.NotNull(provider);

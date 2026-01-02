@@ -58,6 +58,8 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Abstractions
         /// Возвращает политики по категории (иерархически)
         /// </summary>
         Task<IReadOnlyList<PolicyEntity>> GetByCategory(int categoryId);
+
+        Task<IReadOnlyList<PolicyGroupDto>> GetPoliciesGroupedByScope(string langCode);
     }
 
 }

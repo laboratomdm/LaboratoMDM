@@ -33,11 +33,10 @@ public sealed class PolicyCategoryNodeViewModel : ObservableObject
         set => SetProperty(ref _isVisible, value);
     }
 
-    public PolicyCategoryNodeViewModel(string id, string displayName, string? explain)
+    public PolicyCategoryNodeViewModel(string id, string displayName)
     {
         Id = id;
         DisplayName = displayName;
-        ExplainText = explain;
     }
 }
 

@@ -12,7 +12,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Abstractions
 
         Task CreateCategoriesBatch(IReadOnlyList<PolicyCategoryEntity> categories);
 
-        Task<IReadOnlyList<PolicyCategoryEntity>> GetCategoryTree();
+        Task<IReadOnlyList<PolicyCategoryView>> GetCategoryTree();
 
         // Namespaces
         Task<PolicyNamespaceEntity> CreateNamespaceIfNotExists(

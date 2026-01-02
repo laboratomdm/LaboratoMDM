@@ -13,7 +13,7 @@ namespace LaboratoMDM.PolicyEngine.Services
             _repo = repo;
         }
 
-        public Task<IReadOnlyList<PolicyCategoryEntity>> GetCategoryTree()
+        public Task<IReadOnlyList<PolicyCategoryView>> GetCategoryTree()
             => _repo.GetCategoryTree();
 
         public Task<IReadOnlyList<PolicyNamespaceEntity>> GetNamespaces(
