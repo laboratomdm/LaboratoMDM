@@ -122,9 +122,16 @@
                               SelectedItem="{Binding SelectedPolicy}">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="Имя"
-                                                Width="260"
-                                                DisplayMemberBinding="{Binding Name}" />
+                                <GridViewColumn Header="Имя" Width="260">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ShowName}"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
                                 <GridViewColumn Header="Scope"
                                                 Width="80"
                                                 DisplayMemberBinding="{Binding Scope}" />

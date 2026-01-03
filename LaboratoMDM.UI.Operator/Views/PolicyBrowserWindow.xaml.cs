@@ -15,7 +15,7 @@ namespace LaboratoMDM.UI.Operator.Views
         {
             InitializeComponent();
             _policyCatalogServiceClient = policyCatalogServiceClient;
-            _policyBrowserViewModel = new PolicyBrowserViewModel(policyCatalogServiceClient);
+            _policyBrowserViewModel = new PolicyBrowserViewModel(_policyCatalogServiceClient);
 
             DataContext = _policyBrowserViewModel;
         }

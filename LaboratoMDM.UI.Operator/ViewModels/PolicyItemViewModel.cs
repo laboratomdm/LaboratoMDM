@@ -7,8 +7,10 @@ public sealed class PolicyItemViewModel : ObservableObject
     public PolicySummary Definition { get; }
 
     public long Id => Definition.Id;
-    public string Name => Definition.DisplayName;
+    public string Name => Definition.Name;
     public string? ExplainText => Definition.DisplayName;
+
+    public string ShowName => Name + "\n" + ExplainText;
 
     private bool _isEnabled;
     public bool IsEnabled

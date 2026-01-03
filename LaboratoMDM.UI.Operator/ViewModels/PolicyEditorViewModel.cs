@@ -41,7 +41,9 @@ namespace LaboratoMDM.UI.Operator.ViewModels
                 {
                     foreach (var item in policyElement?.Items ?? [])
                     {
-                        vm.Options.Add(item.DisplayName ?? item.Name ?? string.Empty);
+                        vm.Options.Add(new OptionItemViewModel() { 
+                            Value = item.DisplayName ?? item.Name ?? string.Empty
+                        });
                     }
                 }
 

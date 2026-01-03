@@ -3,11 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
              xmlns:selectors="clr-namespace:LaboratoMDM.UI.Operator.Selectors"
-             xmlns:viewmodels="clr-namespace:LaboratoMDM.UI.Operator.ViewModels"
              x:Name="RootControl">
 
     <UserControl.Resources>
-        <!-- DataTemplates для разных типов элементов -->
+        <!-- DataTemplates -->
         <DataTemplate x:Key="TextBoxTemplate">
             <StackPanel Margin="4">
                 <TextBlock Text="{Binding Label}" FontWeight="Bold"/>
@@ -18,12 +17,18 @@
         <DataTemplate x:Key="DropdownTemplate">
             <StackPanel Margin="4">
                 <TextBlock Text="{Binding Label}" FontWeight="Bold"/>
-                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Value, Mode=TwoWay}" />
+
+                <ComboBox ItemsSource="{Binding Options}"
+                  DisplayMemberPath="Value"
+                  SelectedValuePath="Value"
+                  SelectedValue="{Binding Value, Mode=TwoWay}" />
             </StackPanel>
         </DataTemplate>
 
+
         <DataTemplate x:Key="CheckBoxTemplate">
-            <CheckBox Content="{Binding Label}" IsChecked="{Binding Value, Mode=TwoWay}"/>
+            <CheckBox Content="{Binding Label}"
+                      IsChecked="{Binding Value, Mode=TwoWay}"/>
         </DataTemplate>
 
         <DataTemplate x:Key="DecimalTextBoxTemplate">
@@ -39,15 +44,50 @@
         </DataTemplate>
 
         <DataTemplate x:Key="LabelTemplate">
-            <TextBlock Text="{Binding Label}" FontWeight="Normal"/>
+            <TextBlock Text="{Binding Label}" />
         </DataTemplate>
 
         <DataTemplate x:Key="ListBoxTemplate">
             <StackPanel Margin="4">
-                <TextBlock Text="{Binding Label}" FontWeight="Bold"/>
-                <ListBox ItemsSource="{Binding Options}" Height="80"/>
+
+                <TextBlock Text="{Binding Label}"
+                   FontWeight="Bold"
+                   Margin="0,0,0,4"/>
+
+                <ListBox ItemsSource="{Binding Options}"
+                    MinHeight="80" MinWidth="120">
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel LastChildFill="True">
+
+                                <Button Content="✕"
+                                    DockPanel.Dock="Right"
+                                    Width="22"
+                                    Height="22"
+                                    Margin="4,0,0,0"
+                                    Command="{Binding DataContext.RemoveOptionCommand,
+                                                RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    CommandParameter="{Binding}" />
+
+                                <TextBox Text="{Binding Value,
+                                        Mode=TwoWay,
+                                        UpdateSourceTrigger=PropertyChanged}"
+                                        MinWidth="120" />
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+
+                <!-- добавить -->
+                <Button Content="+ Добавить"
+                Margin="0,6,0,0"
+                HorizontalAlignment="Left"
+                Command="{Binding AddOptionCommand}" />
             </StackPanel>
         </DataTemplate>
+
 
         <DataTemplate x:Key="MultiTextBoxTemplate">
             <StackPanel Margin="4">
@@ -55,7 +95,7 @@
                 <ItemsControl ItemsSource="{Binding MultiTextValues}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <TextBox Text="{Binding ., Mode=TwoWay}" Margin="0,2,0,2"/>
+                            <TextBox Text="{Binding ., Mode=TwoWay}" Margin="0,2"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -73,13 +113,45 @@
                                            ListBoxTemplate="{StaticResource ListBoxTemplate}"/>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <ItemsControl ItemsSource="{Binding Elements}">
-            <ItemsControl.ItemTemplate>
-                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                    <ContentControl Content="{Binding}" ContentTemplateSelector="{StaticResource ElementTemplateSelector}"/>
-                </HierarchicalDataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </ScrollViewer>
+    <!-- === Layout === -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- === Scrollable editor === -->
+        <ScrollViewer Grid.Row="0"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Elements}">
+                <ItemsControl.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <ContentControl Content="{Binding}"
+                                        ContentTemplateSelector="{StaticResource ElementTemplateSelector}"/>
+                    </HierarchicalDataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- === Bottom buttons === -->
+        <Border Grid.Row="1"
+                Background="#FFF8F8F8"
+                BorderThickness="1,0,0,0"
+                BorderBrush="#FFD0D0D0"
+                Padding="8">
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+
+                <Button Content="Отключить"
+                        Width="120"
+                        Margin="0,0,8,0"
+                        Command="{Binding DisableCommand}" />
+
+                <Button Content="Применить"
+                        Width="120"
+                        Command="{Binding ApplyCommand}" />
+            </StackPanel>
+        </Border>
+    </Grid>
 </UserControl>

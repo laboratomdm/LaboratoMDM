@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
@@ -7,13 +8,13 @@ namespace LaboratoMDM.UI.Operator.ViewModels
     /// <summary>
     /// ViewModel для одного элемента presentation
     /// </summary>
-    public class PolicyPresentationElementViewModel : ObservableObject
+    public partial class PolicyPresentationElementViewModel : ObservableObject
     {
         public PolicyPresentationElementViewModel()
         {
             Children = new ObservableCollection<PolicyPresentationElementViewModel>();
             Attributes = new Dictionary<string, string>();
-            Options = new ObservableCollection<string>();
+            Options = new ObservableCollection<OptionItemViewModel>();
         }
 
         /// <summary>
@@ -58,11 +59,30 @@ namespace LaboratoMDM.UI.Operator.ViewModels
         /// <summary>
         /// Для dropdownList или listBox: список вариантов
         /// </summary>
-        public ObservableCollection<string> Options { get; }
+        public ObservableCollection<OptionItemViewModel> Options { get; }
+
+        [RelayCommand]
+        private void AddOption()
+        {
+            Options.Add(new OptionItemViewModel());
+        }
+
+        [RelayCommand]
+        private void RemoveOption(OptionItemViewModel option)
+        {
+            if (Options.Contains(option))
+                Options.Remove(option);
+        }
 
         /// <summary>
         /// Для множественного текста (multiTextBox)
         /// </summary>
         public ObservableCollection<string> MultiTextValues { get; } = new();
+    }
+
+    public partial class OptionItemViewModel : ObservableObject
+    {
+        [ObservableProperty]
+        private string value = string.Empty;
     }
 }
