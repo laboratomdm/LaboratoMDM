@@ -81,8 +81,8 @@ message PolicyDescriptor {
     PolicyScope scope = 3;
     string registry_key = 4;
     string value_name = 5;
-    int32 enabled_value = 6;
-    int32 disabled_value = 7;
+    string enabled_value = 6;
+    string disabled_value = 7;
     string supported_on_ref = 8;
     string parent_category = 9;
     repeated PolicyElement elements = 10;

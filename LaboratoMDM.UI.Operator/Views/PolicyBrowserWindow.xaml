@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:sys="clr-namespace:System.Windows;assembly=PresentationFramework"
+        xmlns:views="clr-namespace:LaboratoMDM.UI.Operator.Views"
         xmlns:viewmodels="clr-namespace:LaboratoMDM.UI.Operator.ViewModels"
         mc:Ignorable="d"
         Title="Policy Browser"
@@ -150,8 +151,8 @@
                                Text="{Binding SelectedPolicy.ExplainText}" />
 
                     <!-- существующий редактор -->
-                    <ContentControl Content="{Binding SelectedPolicy}">
-                        <!-- Здесь PolicyEditorWindow / UserControl -->
+                    <ContentControl>
+                        <views:PolicyEditorControl DataContext="{Binding PolicyEditorVM}" />
                     </ContentControl>
 
                 </DockPanel>

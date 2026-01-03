@@ -36,8 +36,8 @@ namespace LaboratoMDM.Mesh.Agent.Domain
         }
         public string RegistryKey { get; set; } = string.Empty;
         public string ValueName { get; set; } = string.Empty;
-        public int? EnabledValue { get; set; }
-        public int? DisabledValue { get; set; }
+        public string? EnabledValue { get; set; }
+        public string? DisabledValue { get; set; }
 
         /// <summary>
         /// Ревизия мастера, с которой пришла эта политика
@@ -101,10 +101,10 @@ namespace LaboratoMDM.Mesh.Agent.Domain
                 {
                     PolicyHash = policy.Hash,
                     ElementId = element.IdName,
-                    Type = element.Type,
+                    Type = element.Type.ToString(),
                     ValueName = element.ValueName,
                     MaxLength = element.MaxLength,
-                    Required = element.Required,
+                    Required = element.Required ?? false,
                     ClientExtension = element.ClientExtension
                 });
             }

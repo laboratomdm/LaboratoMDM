@@ -28,7 +28,10 @@ namespace LaboratoMDM.PolicyEngine.Services
             PolicyEvaluationContext context)
             => _repo.FindApplicablePolicies(context);
 
-        public Task<IReadOnlyList<PolicyGroupDto>> GetPoliciesGroupedByScope(string langCode)
+        public Task<IReadOnlyList<PolicyGroupView>> GetPoliciesGroupedByScope(string langCode)
             => _repo.GetPoliciesGroupedByScope(langCode);
+
+        public Task<PolicyDetailsView> GetPolicyDetailsView(long id, string langCode)
+            => _repo.GetPolicyDetailsView(id, langCode);
     }
 }

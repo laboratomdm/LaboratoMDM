@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using LaboratoMDM.Core.Models.Policy;
+using System.Text.Json.Serialization;
 
 namespace LaboratoMDM.PolicyEngine.Domain
 {

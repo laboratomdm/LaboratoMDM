@@ -17,21 +17,27 @@ namespace LaboratoMDM.UI.Operator
 
         public App()
         {
-            //var services = new ServiceCollection();
+            var services = new ServiceCollection();
 
-            //// Регистрируем gRPC клиента
-            //services.AddSingleton(sp =>
-            //    new AgentService.AgentServiceClient(
-            //        GrpcChannel.ForAddress("http://localhost:5000")));
+            // Регистрируем gRPC клиента
+            services.AddSingleton(sp =>
+                new AgentService.AgentServiceClient(
+                    GrpcChannel.ForAddress("http://localhost:5000")));
 
-            //services.AddSingleton(sp =>
-            //    new UserService.UserServiceClient(
-            //        GrpcChannel.ForAddress("http://localhost:5000")));
+            services.AddSingleton(sp =>
+                new UserService.UserServiceClient(
+                    GrpcChannel.ForAddress("http://localhost:5000")));
 
-            //// Регистрируем окно через DI
-            //services.AddTransient<AgentWindow>();
+            services.AddSingleton(sp =>
+                new PolicyCatalogService.PolicyCatalogServiceClient(
+                        GrpcChannel.ForAddress("http://localhost:5000")
+                    ));
 
-            //Services = services.BuildServiceProvider();
+            // Регистрируем окно через DI
+            services.AddTransient<AgentWindow>();
+            services.AddTransient<PolicyBrowserWindow>();
+
+            Services = services.BuildServiceProvider();
         }
 
         protected override void OnStartup(StartupEventArgs e)
@@ -39,11 +45,11 @@ namespace LaboratoMDM.UI.Operator
             base.OnStartup(e);
 
             // Открываем главное окно (или агентское окно)
-            //var window = Services.GetRequiredService<AgentWindow>();
-            //window.Show();
+            var window = Services.GetRequiredService<AgentWindow>();
+            window.Show();
 
-            var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
-            policyEditorWindow.Show();
+            //var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
+            //policyEditorWindow.Show();
 
             //var policyBrowserWindow = new PolicyBrowserWindow();
             //policyBrowserWindow.Show();

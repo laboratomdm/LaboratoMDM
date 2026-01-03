@@ -100,7 +100,7 @@ namespace LaboratoMDM.Mesh.Agent.Grpc
                 }
 
                 // Build plan
-                var plan = planner.BuildPlan(policy, enable: request.Enable);
+                var plan = planner.BuildPlan(policy, new PolicySelection() { });
 
                 logger.LogDebug(
                     "Policy plan built. Operations={Count}",
@@ -216,7 +216,7 @@ namespace LaboratoMDM.Mesh.Agent.Grpc
 
                 // Строим план отмены
                 var policy = MapToPolicyDefinition(request.Policy);
-                var plan = planner.BuildPlan(policy, enable: false);
+                var plan = planner.BuildPlan(policy, new PolicySelection { });
 
                 if (!applier.IsApplied(plan, executionContext))
                 {
@@ -360,7 +360,7 @@ namespace LaboratoMDM.Mesh.Agent.Grpc
                 ParentCategoryRef = d.ParentCategory,
                 Elements = d.Elements.Select(e => new PolicyElementDefinition
                 {
-                    Type = e.Type,
+                    Type = PolicyElementType.DECIMAL, //todo change after to enum->string mapper
                     IdName = e.IdName,
                     ValueName = string.IsNullOrWhiteSpace(e.ValueName) ? null : e.ValueName,
                     MaxLength = e.MaxLength > 0 ? e.MaxLength : null,

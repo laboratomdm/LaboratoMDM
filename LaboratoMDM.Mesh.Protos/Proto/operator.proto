@@ -1,5 +1,7 @@
 ﻿syntax = "proto3";
 
+import "google/protobuf/wrappers.proto";
+
 package laborato.mesh.operator.v1;
 
 option csharp_namespace = "LaboratoMDM.Mesh.Master.Grpc.Operator.V1";
@@ -177,6 +179,9 @@ service PolicyCatalogService {
 
   rpc ListPoliciesGroupedByScope (ListPoliciesGroupedByScopeRequest)
       returns (ListPoliciesGroupedByScopeResponse);
+
+  rpc GetPolicyDetails (GetPolicyDetailsRequest)
+      returns (PolicyDetails);
 }
 
 message ListPoliciesRequest {
@@ -193,6 +198,79 @@ message GetPolicyRequest {
 
 message ListPoliciesGroupedByScopeRequest {
   string lang_code = 1; // язык для перевода displayName
+}
+
+message GetPolicyDetailsRequest {
+  int64 policy_id = 1;
+  string lang_code = 2;
+}
+
+message PolicyDetails {
+  PolicyDetailsPolicy policy = 1;
+  PolicyPresentation presentation = 2;
+  repeated PolicyDetailsElement policy_elements = 3;
+}
+
+message PolicyDetailsPolicy {
+  int64 id = 1;
+  string name = 2;
+  string hash = 3;
+  string scope = 4;
+
+  optional string parent_category_ref = 5;
+  optional string supported_on_ref = 6;
+  optional google.protobuf.StringValue client_extension = 7;
+}
+
+message PolicyPresentation {
+  int32 id = 1;
+  string presentation_id = 2;
+  string adml_file = 3;
+  repeated PolicyPresentationElement elements = 4;
+}
+
+message PolicyPresentationElement {
+  int32 id = 1;
+  string type = 2;
+  string ref_id = 3;
+  optional google.protobuf.Int32Value parent_element_id = 4;
+  optional google.protobuf.StringValue default_value = 5;
+  optional google.protobuf.StringValue text = 6;
+}
+
+message PolicyDetailsElement {
+  int32 id = 1;
+  string element_id = 2;
+  string type = 3;
+
+  optional google.protobuf.StringValue value_name = 4;
+  optional google.protobuf.BoolValue required = 5;
+  optional google.protobuf.Int32Value max_length = 6;
+
+  optional google.protobuf.StringValue max_strings = 7;
+  optional google.protobuf.BoolValue expandable = 8;
+
+  optional google.protobuf.Int64Value min_value = 9;
+  optional google.protobuf.Int64Value max_value = 10;
+
+  optional google.protobuf.StringValue value_prefix = 11;
+  optional google.protobuf.BoolValue explicit_value = 12;
+  optional google.protobuf.BoolValue additive = 13;
+
+  repeated PolicyDetailsElementItem items = 14;
+}
+
+message PolicyDetailsElementItem {
+  int32 id = 1;
+  string name = 2;
+  string parent_type = 3;
+  string type = 4;
+  string value_type = 5;
+
+  optional google.protobuf.StringValue value_name = 6;
+  optional google.protobuf.BoolValue required = 7;
+  optional google.protobuf.Int32Value parent_id = 8;
+  optional google.protobuf.StringValue display_name = 9;
 }
 
 message ListPoliciesGroupedByScopeResponse {

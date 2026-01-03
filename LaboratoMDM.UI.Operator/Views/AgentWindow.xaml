@@ -4,92 +4,127 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LaboratoMDM.UI.Operator.Views"
+        xmlns:ribbon="clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon"
         mc:Ignorable="d"
         Title="AgentWindow" Height="600" Width="1000">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <!-- Master: List of Agents -->
-        <ListBox Grid.Column="0" ItemsSource="{Binding Agents}" SelectedItem="{Binding SelectedAgent, Mode=TwoWay}">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <StackPanel Margin="4">
-                        <TextBlock Text="{Binding HostName}" FontWeight="Bold"/>
+        <ribbon:Ribbon Grid.Row="0">
+            <ribbon:RibbonTab Header="Home">
+                <ribbon:RibbonGroup Header="Agents">
+                    <ribbon:RibbonButton Label="Policies"
+                                          Click="RibbonButton_Click"/>
+                    <ribbon:RibbonButton Label="PolicyCategories"
+                                          Click="PolicyCategories_Click"/>
+                    <ribbon:RibbonButton Label="Remove"
+                                          Command="{Binding RemoveAgentCommand}"/>
+                </ribbon:RibbonGroup>
+
+                <ribbon:RibbonGroup Header="Actions">
+                    <ribbon:RibbonButton Label="Reboot"
+                                          Command="{Binding RebootAgentCommand}"/>
+                    <ribbon:RibbonButton Label="Shutdown"
+                                          Command="{Binding ShutdownAgentCommand}"/>
+                </ribbon:RibbonGroup>
+            </ribbon:RibbonTab>
+
+            <ribbon:RibbonTab Header="View">
+                <ribbon:RibbonGroup Header="Layout">
+                    <ribbon:RibbonCheckBox Label="Show Offline"
+                                           IsChecked="{Binding ShowOfflineAgents}"/>
+                </ribbon:RibbonGroup>
+            </ribbon:RibbonTab>
+        </ribbon:Ribbon>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Master: List of Agents -->
+            <ListBox Grid.Column="0" ItemsSource="{Binding Agents}" SelectedItem="{Binding SelectedAgent, Mode=TwoWay}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4">
+                            <TextBlock Text="{Binding HostName}" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding IpAddress}"/>
+                            <TextBlock Text="{Binding LastHeartbeat, StringFormat='Last heartbeat: {0:G}'}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Detail: Agent Info -->
+            <TabControl Grid.Column="1" Margin="8" DataContext="{Binding SelectedAgentDetail}">
+                <TabItem Header="Overview">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="{Binding AgentId}"/>
+                        <TextBlock Text="{Binding HostName}"/>
                         <TextBlock Text="{Binding IpAddress}"/>
-                        <TextBlock Text="{Binding LastHeartbeat, StringFormat='Last heartbeat: {0:G}'}"/>
+                        <TextBlock Text="{Binding IsOnline}"/>
+                        <TextBlock Text="{Binding LastHeartbeat}"/>
+                        <TextBlock Text="{Binding Manufacturer}"/>
+                        <TextBlock Text="{Binding Model}"/>
+                        <TextBlock Text="{Binding FirmwareVersion}"/>
                     </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+                </TabItem>
 
-        <!-- Detail: Agent Info -->
-        <TabControl Grid.Column="1" Margin="8" DataContext="{Binding SelectedAgentDetail}">
-            <TabItem Header="Overview">
-                <StackPanel Margin="8">
-                    <TextBlock Text="{Binding AgentId}"/>
-                    <TextBlock Text="{Binding HostName}"/>
-                    <TextBlock Text="{Binding IpAddress}"/>
-                    <TextBlock Text="{Binding IsOnline}"/>
-                    <TextBlock Text="{Binding LastHeartbeat}"/>
-                    <TextBlock Text="{Binding Manufacturer}"/>
-                    <TextBlock Text="{Binding Model}"/>
-                    <TextBlock Text="{Binding FirmwareVersion}"/>
-                </StackPanel>
-            </TabItem>
+                <TabItem Header="System Info">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="{Binding Cpu}"/>
+                        <TextBlock Text="{Binding RamGb, StringFormat='RAM: {0} GB'}"/>
+                        <TextBlock Text="{Binding OsVersion}"/>
+                        <TextBlock Text="{Binding HostnameFull}"/>
+                        <TextBlock Text="Disks:" FontWeight="Bold"/>
+                        <ItemsControl ItemsSource="{Binding Disks}"/>
+                        <TextBlock Text="GPU:" FontWeight="Bold"/>
+                        <ItemsControl ItemsSource="{Binding Gpus}"/>
+                        <TextBlock Text="IP Addresses:" FontWeight="Bold"/>
+                        <ItemsControl ItemsSource="{Binding IpAddresses}"/>
+                        <TextBlock Text="MAC Addresses:" FontWeight="Bold"/>
+                        <ItemsControl ItemsSource="{Binding MacAddresses}"/>
+                        <TextBlock Text="{Binding Motherboard}"/>
+                    </StackPanel>
+                </TabItem>
 
-            <TabItem Header="System Info">
-                <StackPanel Margin="8">
-                    <TextBlock Text="{Binding Cpu}"/>
-                    <TextBlock Text="{Binding RamGb, StringFormat='RAM: {0} GB'}"/>
-                    <TextBlock Text="{Binding OsVersion}"/>
-                    <TextBlock Text="{Binding HostnameFull}"/>
-                    <TextBlock Text="Disks:" FontWeight="Bold"/>
-                    <ItemsControl ItemsSource="{Binding Disks}"/>
-                    <TextBlock Text="GPU:" FontWeight="Bold"/>
-                    <ItemsControl ItemsSource="{Binding Gpus}"/>
-                    <TextBlock Text="IP Addresses:" FontWeight="Bold"/>
-                    <ItemsControl ItemsSource="{Binding IpAddresses}"/>
-                    <TextBlock Text="MAC Addresses:" FontWeight="Bold"/>
-                    <ItemsControl ItemsSource="{Binding MacAddresses}"/>
-                    <TextBlock Text="{Binding Motherboard}"/>
-                </StackPanel>
-            </TabItem>
+                <TabItem Header="Users">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-            <TabItem Header="Users">
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock
+                        <TextBlock
                         Text="{Binding Users.Error}"
                         Foreground="Red"/>
 
-                    <!-- Users list -->
-                    <DataGrid
+                        <!-- Users list -->
+                        <DataGrid
                         Grid.Row="1"
                         ItemsSource="{Binding Users.Users}"
                         AutoGenerateColumns="False"
                         IsReadOnly="True">
 
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                            <DataGridTextColumn Header="SID" Binding="{Binding Sid}"/>
-                            <DataGridTextColumn Header="Type" Binding="{Binding AccountType}"/>
-                            <!--<DataGridCheckBoxColumn Header="Enabled" Binding="{Binding IsEnabled}"/>-->
-                            <DataGridTextColumn Header="Last Logon"
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                                <DataGridTextColumn Header="SID" Binding="{Binding Sid}"/>
+                                <DataGridTextColumn Header="Type" Binding="{Binding AccountType}"/>
+                                <!--<DataGridCheckBoxColumn Header="Enabled" Binding="{Binding IsEnabled}"/>-->
+                                <DataGridTextColumn Header="Last Logon"
                                     Binding="{Binding LastLogon, StringFormat={}{0:G}}"/>
-                            <DataGridTextColumn Header="Groups"
+                                <DataGridTextColumn Header="Groups"
                                     Binding="{Binding Groups}"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </TabItem>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
 
-        </TabControl>
+            </TabControl>
+        </Grid>
     </Grid>
 </Window>

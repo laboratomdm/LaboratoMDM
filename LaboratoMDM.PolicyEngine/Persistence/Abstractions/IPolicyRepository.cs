@@ -59,7 +59,9 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Abstractions
         /// </summary>
         Task<IReadOnlyList<PolicyEntity>> GetByCategory(int categoryId);
 
-        Task<IReadOnlyList<PolicyGroupDto>> GetPoliciesGroupedByScope(string langCode);
+        Task<IReadOnlyList<PolicyGroupView>> GetPoliciesGroupedByScope(string langCode);
+
+        Task<PolicyDetailsView> GetPolicyDetailsView(long id, string langCode);
     }
 
 }

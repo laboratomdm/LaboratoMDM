@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using LaboratoMDM.PolicyEngine.Domain;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -237,13 +238,13 @@ namespace LaboratoMDM.Core.Models.Policy
         #endregion
     }
 
-    public sealed class PolicyJsonWrapper
+    public sealed class PolicyDetailsDefinition
     {
         [JsonPropertyName("Policy")]
         public PolicyDefinition Policy { get; set; } = new();
 
-        //[JsonPropertyName("Presentation")]
-        //public Presintation Presintation{ get; set; }
+        [JsonPropertyName("Presentation")]
+        public Presentation? Presintation { get; set; }
 
         [JsonPropertyName("PolicyElements")]
         public List<PolicyElementDefinition> PolicyElements { get; set; } = new();

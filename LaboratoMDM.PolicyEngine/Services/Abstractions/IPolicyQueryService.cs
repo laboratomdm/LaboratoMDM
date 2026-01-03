@@ -12,6 +12,7 @@ namespace LaboratoMDM.PolicyEngine.Services.Abstractions
         Task<IReadOnlyList<PolicyEntity>> FindApplicable(
             PolicyEvaluationContext context);
 
-        Task<IReadOnlyList<PolicyGroupDto>> GetPoliciesGroupedByScope(string langCode);
+        Task<IReadOnlyList<PolicyGroupView>> GetPoliciesGroupedByScope(string langCode);
+        Task<PolicyDetailsView> GetPolicyDetailsView(long id, string langCode);
     }
 }

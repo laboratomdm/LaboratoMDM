@@ -1,14 +1,14 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using LaboratoMDM.Core.Models.Policy;
+using LaboratoMDM.Mesh.Master.Grpc.Operator.V1;
 
 namespace LaboratoMDM.UI.Operator.ViewModels;
 public sealed class PolicyItemViewModel : ObservableObject
 {
-    public PolicyDefinition Definition { get; }
+    public PolicySummary Definition { get; }
 
-    public string Name => Definition.DisplayName ?? Definition.Name;
-    public string? ExplainText => Definition.ExplainText;
-    public PolicyScope Scope => Definition.Scope;
+    public long Id => Definition.Id;
+    public string Name => Definition.DisplayName;
+    public string? ExplainText => Definition.DisplayName;
 
     private bool _isEnabled;
     public bool IsEnabled
@@ -17,7 +17,7 @@ public sealed class PolicyItemViewModel : ObservableObject
         set => SetProperty(ref _isEnabled, value);
     }
 
-    public PolicyItemViewModel(PolicyDefinition definition)
+    public PolicyItemViewModel(PolicySummary definition)
     {
         Definition = definition;
     }

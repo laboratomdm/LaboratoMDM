@@ -52,6 +52,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IEntityMapper<PolicyCategoryEntity>, PolicyCategoryEntityMapper>();
         services.AddSingleton<IEntityMapper<IReadOnlyList<PolicyCategoryView>>, PolicyCategoryViewMapper>();
         services.AddSingleton<IEntityMapper<PolicyEntity>, PolicyEntityMapper>();
+        services.AddSingleton<IEntityMapper<PolicyDetailsView>, PolicyDetailsViewMapper>();
         services.AddSingleton<IEntityMapper<Translation>, TranslationEntityMapper>();
 
         // Repositories

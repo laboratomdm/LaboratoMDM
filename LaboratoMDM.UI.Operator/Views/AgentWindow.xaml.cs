@@ -22,15 +22,18 @@ namespace LaboratoMDM.UI.Operator.Views
     public partial class AgentWindow : Window
     {
         private readonly AgentsMasterDetailViewModel _viewModel;
+        private readonly PolicyBrowserWindow _policyBrowserWindow;
 
         public AgentWindow(
             AgentService.AgentServiceClient agentClient,
-            UserService.UserServiceClient userClient)
+            UserService.UserServiceClient userClient,
+            PolicyBrowserWindow policyBrowserWindow)
         {
             InitializeComponent();
 
             // Создаем ViewModel с gRPC клиентом
             _viewModel = new AgentsMasterDetailViewModel(agentClient, userClient);
+            _policyBrowserWindow = policyBrowserWindow;
 
             // Назначаем DataContext для биндинга XAML
             DataContext = _viewModel;
@@ -47,6 +50,20 @@ namespace LaboratoMDM.UI.Operator.Views
                     await _viewModel.SelectedAgentDetail.Users.LoadAsync();
                 }
             };
+        }
+
+        private void RibbonButton_Click(object sender, RoutedEventArgs e)
+        {
+            var policyEditorWindow = new PolicyEditorWindow(@"C:\PolicyDefinitions\ru-RU\RemovableStorage.adml");
+            policyEditorWindow.Show();
+        }
+
+        private void PolicyCategories_Click(object sender, RoutedEventArgs e)
+        {
+            if (_policyBrowserWindow != null && !_policyBrowserWindow.IsActive)
+            {
+                _policyBrowserWindow.Show();
+            }
         }
     }
 }

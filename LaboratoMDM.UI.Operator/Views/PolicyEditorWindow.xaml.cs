@@ -11,11 +11,6 @@ namespace LaboratoMDM.UI.Operator.Views
         public PolicyEditorWindow(string admlPath)
         {
             InitializeComponent();
-
-            var vm = new PolicyEditorViewModel();
-            vm.LoadAllPresentationsFromAdml(admlPath);
-
-            DataContext = vm;
         }
     }
 }

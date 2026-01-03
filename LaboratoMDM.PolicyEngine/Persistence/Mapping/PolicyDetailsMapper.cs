@@ -1,18 +1,13 @@
-﻿using LaboratoMDM.PolicyEngine.Domain;
+﻿using LaboratoMDM.Core.Models.Policy;
 using Microsoft.Data.Sqlite;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace LaboratoMDM.PolicyEngine.Persistence.Mapping
 {
     public sealed class PolicyDetailsViewMapper
-        : IEntityMapper<PolicyEntity>
+        : IEntityMapper<PolicyDetailsView>
     {
-        public PolicyEntity Map(SqliteDataReader r)
+        public PolicyDetailsView Map(SqliteDataReader r)
         {
             var json = r.GetString(r.GetOrdinal("PolicyDetails"));
 
@@ -21,7 +16,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Mapping
                 PropertyNameCaseInsensitive = true
             };
 
-            return JsonSerializer.Deserialize<PolicyEntity>(json, options)
+            return JsonSerializer.Deserialize<PolicyDetailsView>(json, options)
                    ?? throw new JsonException("Failed to deserialize PolicyDetailsView");
         }
     }

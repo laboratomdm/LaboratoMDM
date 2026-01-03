@@ -1,16 +1,22 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using System;
-using System.Collections.Generic;
+using Grpc.Core;
+using LaboratoMDM.Mesh.Master.Grpc.Operator.V1;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LaboratoMDM.UI.Operator.ViewModels
 {
     public sealed class PolicyBrowserViewModel : ObservableObject
     {
         public ObservableCollection<PolicyCategoryNodeViewModel> RootCategories { get; } = new();
+        public PolicyEditorViewModel PolicyEditorVM { get; } = new();
+
+        private readonly PolicyCatalogService.PolicyCatalogServiceClient _policyCatalogServiceClient;
+
+        public PolicyBrowserViewModel(PolicyCatalogService.PolicyCatalogServiceClient policyCatalogServiceClient)
+        {
+            _policyCatalogServiceClient = policyCatalogServiceClient;
+            GetPolicies();
+        }
 
         private PolicyCategoryNodeViewModel? _selectedCategory;
         public PolicyCategoryNodeViewModel? SelectedCategory
@@ -31,8 +37,43 @@ namespace LaboratoMDM.UI.Operator.ViewModels
         public PolicyItemViewModel? SelectedPolicy
         {
             get => _selectedPolicy;
-            set => SetProperty(ref _selectedPolicy, value);
+            set
+            {
+                if (SetProperty(ref _selectedPolicy, value))
+                {
+                    LoadPolicyDetails(_selectedPolicy);
+                }
+            }
         }
+
+        private PolicyDetails? _policyDetailsForEditor;
+        public PolicyDetails? PolicyDetailsForEditor
+        {
+            get => _policyDetailsForEditor;
+            set => SetProperty(ref _policyDetailsForEditor, value);
+        }
+
+        private async void LoadPolicyDetails(PolicyItemViewModel? policy)
+        {
+            if (policy == null) return;
+
+            try
+            {
+                var details = await _policyCatalogServiceClient.GetPolicyDetailsAsync(
+                    new GetPolicyDetailsRequest
+                    {
+                        PolicyId = policy.Id,
+                        LangCode = "ru-RU"
+                    });
+
+                PolicyEditorVM.LoadFromPolicyDetails(details);
+            }
+            catch (RpcException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
 
         private string _searchText = "";
         public string SearchText
@@ -60,6 +101,7 @@ namespace LaboratoMDM.UI.Operator.ViewModels
                 ApplySearchRecursive(root, SearchText);
         }
 
+        // todo change search by policies
         private bool ApplySearchRecursive(
             PolicyCategoryNodeViewModel node,
             string text)
@@ -82,6 +124,20 @@ namespace LaboratoMDM.UI.Operator.ViewModels
             node.IsExpanded = hasVisibleChild || hasPolicyMatch;
 
             return node.IsVisible;
+        }
+
+        private void GetPolicies()
+        {
+            var groups = _policyCatalogServiceClient.ListPoliciesGroupedByScope(new ListPoliciesGroupedByScopeRequest() { LangCode = "ru-RU" }).Groups;
+            foreach (var group in groups)
+            {
+                var category = new PolicyCategoryNodeViewModel(group.Scope, group.Scope);
+                foreach (var item in group.Policies)
+                {
+                    category.Policies.Add(new PolicyItemViewModel(item));
+                }
+                RootCategories.Add(category);
+            }
         }
     }
 }

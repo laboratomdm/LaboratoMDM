@@ -13,8 +13,8 @@ namespace LaboratoMDM.Mesh.Agent.Persistance.Mapping
             ScopeString = r.GetString(r.GetOrdinal("Scope")),
             RegistryKey = r.GetString(r.GetOrdinal("RegistryKey")),
             ValueName = r.GetString(r.GetOrdinal("ValueName")),
-            EnabledValue = r.IsDBNull(r.GetOrdinal("EnabledValue")) ? null : r.GetInt32(r.GetOrdinal("EnabledValue")),
-            DisabledValue = r.IsDBNull(r.GetOrdinal("DisabledValue")) ? null : r.GetInt32(r.GetOrdinal("DisabledValue")),
+            EnabledValue = r.IsDBNull(r.GetOrdinal("EnabledValue")) ? null : r.GetString(r.GetOrdinal("EnabledValue")),
+            DisabledValue = r.IsDBNull(r.GetOrdinal("DisabledValue")) ? null : r.GetString(r.GetOrdinal("DisabledValue")),
             SourceRevision = r.GetInt32(r.GetOrdinal("SourceRevision")),
             Elements = new List<AgentPolicyElementEntity>()
         };
