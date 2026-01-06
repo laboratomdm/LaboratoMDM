@@ -36,6 +36,13 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<UserServiceImpl>();
         services.AddSingleton<AdmxServiceImpl>();
         services.AddSingleton<PolicyCatalogServiceImpl>();
+        // Sync
+        services.AddSingleton<PolicySyncServiceImpl>();
+        services.AddSingleton<AgentPayloadBuilder>(sp =>
+        {
+            var builder = new AgentPayloadBuilder(dbFile);
+            return builder;
+        });
 
         services.AddGrpc();
 
@@ -62,6 +69,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<ITranslationRepository, TranslationRepository>();
         services.AddSingleton<IAdmlSnapshotWriter, AdmlSnapshotWriter>();
 
+        // Business Services
         services.AddSingleton<IAdmxImportService, AdmxImportService>();
         services.AddSingleton<IAdmxQueryService, AdmxQueryService>();
         services.AddSingleton<IPolicyQueryService, PolicyQueryService>();
@@ -99,6 +107,7 @@ var host = Host.CreateDefaultBuilder(args)
                 endpoints.MapGrpcService<UserServiceImpl>();
                 endpoints.MapGrpcService<AdmxServiceImpl>();
                 endpoints.MapGrpcService<PolicyCatalogServiceImpl>();
+                endpoints.MapGrpcService<PolicySyncServiceImpl>();
             });
         });
     })

@@ -244,7 +244,7 @@ namespace LaboratoMDM.Core.Models.Policy
         public PolicyDefinition Policy { get; set; } = new();
 
         [JsonPropertyName("Presentation")]
-        public Presentation? Presintation { get; set; }
+        public Presentation? Presentation { get; set; }
 
         [JsonPropertyName("PolicyElements")]
         public List<PolicyElementDefinition> PolicyElements { get; set; } = new();

@@ -32,6 +32,7 @@ CREATE TABLE PolicyElements (
     ElementId TEXT NOT NULL,
     Type TEXT NOT NULL,
 
+    RegistryKey TEXT,
     ValueName TEXT,
 
     Required INTEGER NOT NULL DEFAULT 0,

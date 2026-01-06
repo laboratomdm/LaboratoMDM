@@ -101,14 +101,37 @@ message AdmxFileDescriptor {
 
 // POLICY APPLY / REMOVE
 message ApplyPolicyRequest {
-    PolicyDescriptor policy = 1;
-    bool enable = 2;
+    string policy_hash = 1;
+    int64 revision = 2;
+    bool enable = 3;
+
+    // Выбранные значения политики
+    PolicySelection selection = 4;
 
     oneof target {
-        string userSid = 3;
-        string groupName = 4;
-        bool machineScope = 5;
+        string user_sid = 5;
+        string group_name = 6;
+        bool machine_scope = 7;
     }
+}
+
+// Выбор значений элементов
+message PolicySelection {
+    string value = 1; // legacy single value
+    repeated PolicyElementSelection elements = 2;
+    repeated string list_keys = 3;
+}
+
+message PolicyElementSelection {
+    string id_name = 1;
+    string value = 2;
+    repeated PolicyElementItemSelection childs = 3;
+}
+
+message PolicyElementItemSelection {
+    string id_name = 1;
+    string value = 2;
+    repeated PolicyElementItemSelection childs = 3;
 }
 
 message ApplyPolicyResponse {
@@ -117,12 +140,13 @@ message ApplyPolicyResponse {
 }
 
 message RemovePolicyRequest {
-    PolicyDescriptor policy = 1;
+    string policy_hash = 1;
+    int64 revision = 2;
 
     oneof target {
-        string userSid = 2;
-        string groupName = 3;
-        bool machineScope = 4;
+        string user_sid = 3;
+        string group_name = 4;
+        bool machine_scope = 5;
     }
 }
 
@@ -154,18 +178,6 @@ message PolicyStateItem {
     string actual_value = 5; // optional: value from registry or system
 }
 
-// POLICY / ADMX SYNCHRONIZATION
-message SyncRequest {
-    string agent_id = 1;
-    int64 last_known_revision = 2; // последний ревизионный номер, известный агенту
-}
-
-message SyncResponse {
-    int64 current_master_revision = 1; // текущая ревизия мастера
-    repeated PolicyDescriptor policies = 2;
-    repeated AdmxFileDescriptor admx_files = 3;
-}
-
 service MeshService {
     // Node information
     rpc SendNodeInfo(NodeFullInfo) returns (google.protobuf.Empty);
@@ -181,7 +193,34 @@ service MeshService {
 
     // Policy state reporting
     rpc ReportPolicyState(PolicyStateReportRequest) returns (google.protobuf.Empty);
+}
 
+// POLICY SYNCHRONIZATION
+enum PolicySyncMode {
+  SYNC_MODE_NONE = 0;
+  SYNC_MODE_SNAPSHOT = 1;
+  SYNC_MODE_DIFF = 2; // зарезервировано
+}
+
+message PolicySyncRequest {
+  string agent_id = 1;
+  int64 last_known_revision = 2;
+}
+
+message PolicySyncInit {
+  PolicySyncMode mode = 1;
+  int64 master_revision = 2;
+  string sha256 = 3;
+  int64 payload_size = 4;
+}
+
+message PolicySyncChunk {
+  bytes data = 1;
+  bool last = 2;
+}
+
+service PolicySyncService {
     // Sync policies and ADMX files (MASTER -> AGENT)
-    rpc Sync(SyncRequest) returns (SyncResponse);
+    rpc StartPolicySync(PolicySyncRequest) returns (PolicySyncInit);
+    rpc StreamPolicyPayload(google.protobuf.Empty) returns (stream PolicySyncChunk);
 }

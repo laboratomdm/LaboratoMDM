@@ -103,6 +103,8 @@ namespace LaboratoMDM.PolicyEngine.Domain
 
         public string Type { get; set; } = "text";
         public string IdName { get; set; } = string.Empty;
+
+        public string? RegistryKey { get; set; }
         public string? ValueName { get; set; }
 
         public bool Required { get; set; }
@@ -286,6 +288,7 @@ namespace LaboratoMDM.PolicyEngine.Domain
                     ignoreCase: true),
 
                 IdName = entity.IdName,
+                RegistryKey = entity.RegistryKey,
                 ValueName = entity.ValueName,
                 ClientExtension = entity.ClientExtension,
 

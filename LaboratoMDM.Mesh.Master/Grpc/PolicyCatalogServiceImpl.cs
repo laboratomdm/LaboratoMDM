@@ -136,6 +136,9 @@ public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalo
             if (pe.ValueName != null)
                 protoElement.ValueName = pe.ValueName;
 
+            if (pe.RegistryKey != null)
+                protoElement.RegistryKey = pe.RegistryKey;
+
             if (pe.Required.HasValue)
                 protoElement.Required = pe.Required.Value;
 

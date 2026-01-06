@@ -96,139 +96,139 @@ namespace LaboratoMDM.Mesh.Master.Grpc
         }
 
         // Apply Policy
-        public override async Task<ApplyPolicyResponse> ApplyPolicy(
-            ApplyPolicyRequest request,
-            ServerCallContext context)
-        {
-            try
-            {
-                string? targetAgentId = null;
+        //public override async Task<ApplyPolicyResponse> ApplyPolicy(
+        //    ApplyPolicyRequest request,
+        //    ServerCallContext context)
+        //{
+        //    try
+        //    {
+        //        string? targetAgentId = null;
 
-                // Определяем к какому агенту применяем
-                if (!string.IsNullOrEmpty(request.UserSid))
-                {
-                    // Ищем пользователя и его агент
-                    var allNodes = await _nodeRepo.GetAllNodes();
-                    var node = allNodes.FirstOrDefault(n =>
-                        n.Users.Any(u => u.Sid == request.UserSid));
+        //        // Определяем к какому агенту применяем
+        //        if (!string.IsNullOrEmpty(request.UserSid))
+        //        {
+        //            // Ищем пользователя и его агент
+        //            var allNodes = await _nodeRepo.GetAllNodes();
+        //            var node = allNodes.FirstOrDefault(n =>
+        //                n.Users.Any(u => u.Sid == request.UserSid));
 
-                    if (node == null)
-                        return new ApplyPolicyResponse
-                        {
-                            Success = false,
-                            Message = $"User {request.UserSid} not found on any node"
-                        };
+        //            if (node == null)
+        //                return new ApplyPolicyResponse
+        //                {
+        //                    Success = false,
+        //                    Message = $"User {request.UserSid} not found on any node"
+        //                };
 
-                    targetAgentId = node.SystemInfo.NodeId.ToString();
-                }
-                else if (request.MachineScope)
-                {
-                    // Здесь нужно определить целевой агент. Для примера возьмем один узел.
-                    // В продакшене — передавать NodeId явно или через контекст.
-                    var allNodes = await _nodeRepo.GetAllNodes();
-                    targetAgentId = allNodes.FirstOrDefault()?.SystemInfo.NodeId.ToString();
-                    if (targetAgentId == null)
-                        return new ApplyPolicyResponse
-                        {
-                            Success = false,
-                            Message = "No nodes registered"
-                        };
-                }
+        //            targetAgentId = node.SystemInfo.NodeId.ToString();
+        //        }
+        //        else if (request.MachineScope)
+        //        {
+        //            // Здесь нужно определить целевой агент. Для примера возьмем один узел.
+        //            // В продакшене — передавать NodeId явно или через контекст.
+        //            var allNodes = await _nodeRepo.GetAllNodes();
+        //            targetAgentId = allNodes.FirstOrDefault()?.SystemInfo.NodeId.ToString();
+        //            if (targetAgentId == null)
+        //                return new ApplyPolicyResponse
+        //                {
+        //                    Success = false,
+        //                    Message = "No nodes registered"
+        //                };
+        //        }
 
-                if (targetAgentId == null)
-                {
-                    return new ApplyPolicyResponse
-                    {
-                        Success = false,
-                        Message = "Target agent not found"
-                    };
-                }
+        //        if (targetAgentId == null)
+        //        {
+        //            return new ApplyPolicyResponse
+        //            {
+        //                Success = false,
+        //                Message = "Target agent not found"
+        //            };
+        //        }
 
-                // TODO: тут делаем gRPC вызов на агента
-                // предполагается, что на агенте есть аналогичный сервис ApplyPolicy
-                // Пример (pseudo):
-                /*
-                var channel = GrpcChannel.ForAddress($"http://{agentAddress}:5000");
-                var client = new MeshService.MeshServiceClient(channel);
-                await client.ApplyPolicyAsync(request);
-                */
+        //        // TODO: тут делаем gRPC вызов на агента
+        //        // предполагается, что на агенте есть аналогичный сервис ApplyPolicy
+        //        // Пример (pseudo):
+        //        /*
+        //        var channel = GrpcChannel.ForAddress($"http://{agentAddress}:5000");
+        //        var client = new MeshService.MeshServiceClient(channel);
+        //        await client.ApplyPolicyAsync(request);
+        //        */
 
-                _logger.LogInformation("Applying policy {Policy} to agent {AgentId}",
-                    request.Policy.Name, targetAgentId);
+        //        _logger.LogInformation("Applying policy {Policy} to agent {AgentId}",
+        //            request.Policy.Name, targetAgentId);
 
-                return new ApplyPolicyResponse
-                {
-                    Success = true,
-                    Message = $"Policy {request.Policy.Name} applied to agent {targetAgentId}"
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error applying policy");
-                return new ApplyPolicyResponse
-                {
-                    Success = false,
-                    Message = ex.Message
-                };
-            }
-        }
+        //        return new ApplyPolicyResponse
+        //        {
+        //            Success = true,
+        //            Message = $"Policy {request.Policy.Name} applied to agent {targetAgentId}"
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error applying policy");
+        //        return new ApplyPolicyResponse
+        //        {
+        //            Success = false,
+        //            Message = ex.Message
+        //        };
+        //    }
+        //}
 
-        // ==============================
-        // Remove Policy
-        // ==============================
-        public override async Task<RemovePolicyResponse> RemovePolicy(
-            RemovePolicyRequest request,
-            ServerCallContext context)
-        {
-            try
-            {
-                string? targetAgentId = null;
+        //// ==============================
+        //// Remove Policy
+        //// ==============================
+        //public override async Task<RemovePolicyResponse> RemovePolicy(
+        //    RemovePolicyRequest request,
+        //    ServerCallContext context)
+        //{
+        //    try
+        //    {
+        //        string? targetAgentId = null;
 
-                if (!string.IsNullOrEmpty(request.UserSid))
-                {
-                    var allNodes = await _nodeRepo.GetAllNodes();
-                    var node = allNodes.FirstOrDefault(n =>
-                        n.Users.Any(u => u.Sid == request.UserSid));
-                    targetAgentId = node?.SystemInfo.NodeId.ToString();
-                    if (targetAgentId == null)
-                        return new RemovePolicyResponse
-                        {
-                            Success = false,
-                            Message = $"User {request.UserSid} not found"
-                        };
-                }
-                else if (request.MachineScope)
-                {
-                    var allNodes = await _nodeRepo.GetAllNodes();
-                    targetAgentId = allNodes.FirstOrDefault()?.SystemInfo.NodeId.ToString();
-                    if (targetAgentId == null)
-                        return new RemovePolicyResponse
-                        {
-                            Success = false,
-                            Message = "No nodes registered"
-                        };
-                }
+        //        if (!string.IsNullOrEmpty(request.UserSid))
+        //        {
+        //            var allNodes = await _nodeRepo.GetAllNodes();
+        //            var node = allNodes.FirstOrDefault(n =>
+        //                n.Users.Any(u => u.Sid == request.UserSid));
+        //            targetAgentId = node?.SystemInfo.NodeId.ToString();
+        //            if (targetAgentId == null)
+        //                return new RemovePolicyResponse
+        //                {
+        //                    Success = false,
+        //                    Message = $"User {request.UserSid} not found"
+        //                };
+        //        }
+        //        else if (request.MachineScope)
+        //        {
+        //            var allNodes = await _nodeRepo.GetAllNodes();
+        //            targetAgentId = allNodes.FirstOrDefault()?.SystemInfo.NodeId.ToString();
+        //            if (targetAgentId == null)
+        //                return new RemovePolicyResponse
+        //                {
+        //                    Success = false,
+        //                    Message = "No nodes registered"
+        //                };
+        //        }
 
-                // TODO: тут делаем gRPC вызов на агента для удаления политики
+        //        // TODO: тут делаем gRPC вызов на агента для удаления политики
 
-                _logger.LogInformation("Removing policy {Policy} from agent {AgentId}",
-                    request.Policy.Name, targetAgentId);
+        //        _logger.LogInformation("Removing policy {Policy} from agent {AgentId}",
+        //            request.Policy.Name, targetAgentId);
 
-                return new RemovePolicyResponse
-                {
-                    Success = true,
-                    Message = $"Policy {request.Policy.Name} removed from agent {targetAgentId}"
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing policy");
-                return new RemovePolicyResponse
-                {
-                    Success = false,
-                    Message = ex.Message
-                };
-            }
-        }
+        //        return new RemovePolicyResponse
+        //        {
+        //            Success = true,
+        //            Message = $"Policy {request.Policy.Name} removed from agent {targetAgentId}"
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error removing policy");
+        //        return new RemovePolicyResponse
+        //        {
+        //            Success = false,
+        //            Message = ex.Message
+        //        };
+        //    }
+        //}
     }
 }

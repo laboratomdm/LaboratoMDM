@@ -37,6 +37,8 @@ namespace LaboratoMDM.Core.Models.Policy
         public int Id { get; set; }
         public required string ElementId { get; set; }
         public required string Type { get; set; }
+
+        public string? RegistryKey { get; set; }
         public string? ValueName { get; set; }
 
         [JsonConverter(typeof(IntBooleanJsonConverter))]

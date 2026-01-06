@@ -6,26 +6,21 @@ using System.Threading.Tasks;
 
 namespace LaboratoMDM.Core.Models.Policy
 {
+    public class AgentPolicyReport
+    {
+        public PolicyComplianceState State { get; set; }
+        public string? Key { get; set; }
+        public string? ValueName { get; set; }
+        public object? ActualValue { get; set; }
+        public object? ExpectedValue { get; set; }
+        public string? Reason { get; set; }
+        public List<AgentPolicyReport> ChildReports { get; set; } = new();
+    }
+
     public enum PolicyComplianceState
     {
-        NotApplied = 0,
-        Applied = 1,
-        Drifted = 2
+        Applied,
+        NotApplied,
+        Drifted
     }
-
-    public sealed class AgentPolicyReport
-    {
-        public string PolicyHash { get; init; } = string.Empty;
-        public PolicyScope Scope { get; init; }
-
-        public string? UserSid { get; init; }
-
-        public PolicyComplianceState State { get; init; }
-
-        public object? ActualValue { get; init; }
-        public object? ExpectedValue { get; init; }
-
-        public string? Reason { get; init; }
-    }
-
 }

@@ -11,10 +11,10 @@ namespace LaboratoMDM.PolicyEngine.Domain
         public int Id {  get; set; }
         public string? PresentationId {  get; set; }
         public string? AdmlFile { get; set; }
-        public List<PresentationElementEntity>? Elements {  get; set; }
+        public List<PresentationElement>? Elements {  get; set; }
     }
 
-    public sealed class PresentationElementEntity
+    public sealed class PresentationElement
     {
         public int Id { get; set; }
         public string? Type { get; set; }
