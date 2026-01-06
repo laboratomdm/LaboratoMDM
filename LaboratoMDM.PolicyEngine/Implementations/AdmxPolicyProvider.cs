@@ -250,6 +250,7 @@ public sealed class AdmxPolicyProvider : IPolicyProvider
                     {
                         Type = type,
                         IdName = (string)e.Attribute("id")!,
+                        RegistryKey = (string?)e.Attribute("key"),
                         ValueName = (string?)e.Attribute("valueName"),
                         MaxLength = (int?)e.Attribute("maxLength"),
                         Required = (bool?)e.Attribute("required") ?? false,

@@ -335,9 +335,27 @@ service PolicyAssignmentService {
 
 message AssignPolicyRequest {
   string policy_hash = 1;
-  PolicyDesiredState desired_state = 2;
-  PolicyTarget target = 3;
-  PolicyValueOverride override = 4;
+  PolicyTarget target = 2;
+  PolicySelection selection = 3;
+}
+
+// Выбор значений элементов
+message PolicySelection {
+    string value = 1; // legacy single value
+    repeated PolicyElementSelection elements = 2;
+    repeated string list_keys = 3;
+}
+
+message PolicyElementSelection {
+    string id_name = 1;
+    string value = 2;
+    repeated PolicyElementItemSelection childs = 3;
+}
+
+message PolicyElementItemSelection {
+    string id_name = 1;
+    string value = 2;
+    repeated PolicyElementItemSelection childs = 3;
 }
 
 message AssignPolicyResponse {}

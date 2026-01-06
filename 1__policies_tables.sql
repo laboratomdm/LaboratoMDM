@@ -163,3 +163,9 @@ CREATE TABLE PolicyHardwareRequirements (
 
 CREATE INDEX idx_policy_hardware ON PolicyHardwareRequirements(PolicyId);
 CREATE INDEX idx_hardwarefeature ON PolicyHardwareRequirements(HardwareFeature);
+
+CREATE TABLE PolicyRevision (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RevisionNumber INTEGER NOT NULL,
+    AppliedAt TEXT DEFAULT (datetime('now'))
+);

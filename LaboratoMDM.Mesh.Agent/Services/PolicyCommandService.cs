@@ -54,11 +54,11 @@ namespace LaboratoMDM.Mesh.Agent.Services
 
             var executionContext = ResolveTarget(target);
 
-            // Проверка применимости
-            var applicability = _checker.Check(policy, new PolicyEvaluationContext());
-            if (applicability.Status != PolicyApplicabilityStatus.Applicable)
-                throw new InvalidOperationException(
-                    $"Policy not applicable: {applicability.Reason}");
+            // Проверка применимости //todo решить проблему с supported on catalog
+            //var applicability = _checker.Check(policy, new PolicyEvaluationContext());
+            //if (applicability.Status != PolicyApplicabilityStatus.Applicable)
+            //    throw new InvalidOperationException(
+            //        $"Policy not applicable: {applicability.Reason}");
 
             // Строим план с переданными значениями
             var plan = _planner.BuildPlan(policy, selection);

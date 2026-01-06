@@ -1,6 +1,6 @@
 ﻿using Laborato.Mesh;
 
-namespace LaboratoMDM.Mesh.Agent.Grpc
+namespace LaboratoMDM.Mesh.Master.Grpc
 {
     public interface IAgentPolicyClient
     {

@@ -3,6 +3,7 @@ using LaboratoMDM.Mesh.Master.Grpc;
 using LaboratoMDM.Mesh.Master.Grpc.Services;
 using LaboratoMDM.Mesh.Master.Repositories;
 using LaboratoMDM.Mesh.Master.Services;
+using LaboratoMDM.Mesh.Master.Services.Abstractions;
 using LaboratoMDM.PolicyEngine.Domain;
 using LaboratoMDM.PolicyEngine.Persistence;
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
@@ -36,6 +37,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<UserServiceImpl>();
         services.AddSingleton<AdmxServiceImpl>();
         services.AddSingleton<PolicyCatalogServiceImpl>();
+        services.AddSingleton<PolicyAssignmentServiceImpl>();
         // Sync
         services.AddSingleton<PolicySyncServiceImpl>();
         services.AddSingleton<AgentPayloadBuilder>(sp =>
@@ -81,6 +83,10 @@ var host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<IAdmxFolderImporter, AdmxFolderImporter>();
         services.AddSingleton<IAdmlFolderImporter, AdmlFolderImporter>();
+
+        services.AddSingleton<IPolicyAssignService, PolicyAssignService>();
+        services.AddSingleton<IAgentPolicyClient, AgentPolicyClient>();
+
     })
     .ConfigureLogging(logging =>
     {
@@ -108,6 +114,7 @@ var host = Host.CreateDefaultBuilder(args)
                 endpoints.MapGrpcService<AdmxServiceImpl>();
                 endpoints.MapGrpcService<PolicyCatalogServiceImpl>();
                 endpoints.MapGrpcService<PolicySyncServiceImpl>();
+                endpoints.MapGrpcService<PolicyAssignmentServiceImpl>();
             });
         });
     })

@@ -147,7 +147,7 @@ namespace LaboratoMDM.PolicyEngine.Implementations
 
                 if (op.Delete)
                 {
-                    return key == null;
+                    return key != null;
                 }
 
                 if (key == null)

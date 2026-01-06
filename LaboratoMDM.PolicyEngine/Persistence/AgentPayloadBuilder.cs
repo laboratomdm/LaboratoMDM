@@ -85,6 +85,7 @@ public sealed class AgentPayloadBuilder
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             PolicyId INTEGER NOT NULL,
             ElementId TEXT NOT NULL,
+            RegistryKey TEXT,
             Type TEXT NOT NULL,
             ValueName TEXT,
             MaxLength INTEGER,
@@ -169,7 +170,7 @@ public sealed class AgentPayloadBuilder
         var sql = """
         INSERT INTO PolicyElements (
             PolicyId,
-            ElementId, Type, ValueName,
+            ElementId, Type, RegistryKey, ValueName,
             MaxLength, Required, ClientExtension,
             ValuePrefix, ExplicitValue, Additive,
             MinValue, MaxValue, StoreAsText,
@@ -177,7 +178,7 @@ public sealed class AgentPayloadBuilder
         )
         SELECT
             p.Id,
-            pe.ElementId, pe.Type, pe.ValueName,
+            pe.ElementId, pe.Type, pe.RegistryKey, pe.ValueName,
             pe.MaxLength, pe.Required, pe.ClientExtension,
             pe.ValuePrefix, pe.ExplicitValue, pe.Additive,
             pe.MinValue, pe.MaxValue, pe.StoreAsText,

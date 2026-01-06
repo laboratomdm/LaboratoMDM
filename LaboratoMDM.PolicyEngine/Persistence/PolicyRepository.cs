@@ -270,6 +270,8 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             var existing = await GetByHash(policy.Hash);
             if (existing != null) return existing;
 
+            long newRevision = await GetNextRevision((SqliteTransaction)tx);
+
             using var cmd = _conn.CreateCommand();
             cmd.Transaction = (SqliteTransaction)tx;
             cmd.CommandText = """
@@ -307,6 +309,8 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             if (policies.Count == 0) return;
 
             await using var tx = await _conn.BeginTransactionAsync();
+
+            long newRevision = await GetNextRevision((SqliteTransaction)tx);
 
             using var cmd = _conn.CreateCommand();
             cmd.Transaction = (SqliteTransaction)tx;
@@ -376,10 +380,10 @@ namespace LaboratoMDM.PolicyEngine.Persistence
                 cmd.Transaction = tx;
                 cmd.CommandText = """
 INSERT OR IGNORE INTO PolicyElements
-(PolicyId, ElementId, Type, ValueName, Required, MaxLength, ClientExtension, ValuePrefix, 
+(PolicyId, ElementId, Type, RegistryKey, ValueName, Required, MaxLength, ClientExtension, ValuePrefix, 
 ExplicitValue, Additive, MinValue, MaxValue, StoreAsText, Expandable, MaxStrings)
 VALUES
-(@pid,@eid,@type,@vn,@req,@ml,@ce,@vp,@ev,@add,@min,@max,@store,@exp,@maxstr);
+(@pid,@eid,@type,@rk,@vn,@req,@ml,@ce,@vp,@ev,@add,@min,@max,@store,@exp,@maxstr);
 
 SELECT Id
 FROM PolicyElements
@@ -389,6 +393,7 @@ WHERE PolicyId = @pid AND ElementId = @eid;
                 cmd.Parameters.AddWithValue("@pid", policyId);
                 cmd.Parameters.AddWithValue("@eid", e.IdName);
                 cmd.Parameters.AddWithValue("@type", e.Type);
+                cmd.Parameters.AddWithValue("@rk", (object?)e.RegistryKey ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@vn", (object?)e.ValueName ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@req", e.Required ? 1 : 0);
                 cmd.Parameters.AddWithValue("@ml", (object?)e.MaxLength ?? DBNull.Value);
@@ -740,6 +745,24 @@ WHERE PolicyId = @pid AND ElementId = @eid;
             }
 
             return _detailsViewMapper.Map(reader);
+        }
+
+        private async Task<long> GetNextRevision(SqliteTransaction tx)
+        {
+            using var cmdCheck = _conn.CreateCommand();
+            cmdCheck.Transaction = tx;
+            cmdCheck.CommandText = "SELECT MAX(RevisionNumber) FROM PolicyRevision;";
+            var result = await cmdCheck.ExecuteScalarAsync();
+            long nextRevision = (result != null && result != DBNull.Value) ? Convert.ToInt64(result) + 1 : 1;
+
+            // добавляем новую запись о ревизии
+            using var cmdInsert = _conn.CreateCommand();
+            cmdInsert.Transaction = tx;
+            cmdInsert.CommandText = "INSERT INTO PolicyRevision (RevisionNumber, AppliedAt) VALUES (@rev, datetime('now'));";
+            cmdInsert.Parameters.AddWithValue("@rev", nextRevision);
+            await cmdInsert.ExecuteNonQueryAsync();
+
+            return nextRevision;
         }
     }
 }

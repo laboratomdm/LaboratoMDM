@@ -1,7 +1,7 @@
 ﻿using Grpc.Net.Client;
 using Laborato.Mesh;
 
-namespace LaboratoMDM.Mesh.Agent.Grpc
+namespace LaboratoMDM.Mesh.Master.Grpc
 {
     public sealed class AgentPolicyClient : IAgentPolicyClient
     {
