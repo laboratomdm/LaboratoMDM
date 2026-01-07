@@ -6,14 +6,10 @@ using LaboratoMDM.PolicyEngine.Services.Abstractions;
 
 namespace LaboratoMDM.Mesh.Master.Grpc;
 
-public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalogServiceBase
+public sealed class PolicyCatalogServiceImpl(
+    IPolicyQueryService policyQueryService, 
+    IPolicyMetadataService policyMetadataService) : PolicyCatalogService.PolicyCatalogServiceBase
 {
-    private readonly IPolicyQueryService _policyQueryService;
-
-    public PolicyCatalogServiceImpl(IPolicyQueryService policyQueryService)
-    {
-        _policyQueryService = policyQueryService;
-    }
 
     // Метод ListPolicies (для конкретного ADMX файла)
     public override async Task<ListPoliciesResponse> ListPolicies(
@@ -31,7 +27,7 @@ public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalo
         if (string.IsNullOrEmpty(request.PolicyHash))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "PolicyHash is required"));
 
-        var policy = await _policyQueryService.GetByHash(request.PolicyHash);
+        var policy = await policyQueryService.GetByHash(request.PolicyHash);
         if (policy == null)
             throw new RpcException(new Status(StatusCode.NotFound, $"Policy with hash {request.PolicyHash} not found"));
 
@@ -46,7 +42,7 @@ public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalo
         if (string.IsNullOrEmpty(request.LangCode))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "LangCode is required"));
 
-        var groupsDto = await _policyQueryService.GetPoliciesGroupedByScope(request.LangCode);
+        var groupsDto = await policyQueryService.GetPoliciesGroupedByScope(request.LangCode);
 
         var response = new ListPoliciesGroupedByScopeResponse();
         foreach (var group in groupsDto)
@@ -79,7 +75,7 @@ public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalo
         if (string.IsNullOrEmpty(request.LangCode))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "LangCode is required"));
 
-        var details = await _policyQueryService
+        var details = await policyQueryService
             .GetPolicyDetailsView(request.PolicyId, request.LangCode);
 
         if (details == null)
@@ -191,6 +187,56 @@ public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalo
         return response;
     }
 
+    public override async Task<GetCategoryTreeResponse> GetCategoryTree(GetCategoryTreeRequest request, ServerCallContext context)
+    {
+        if (string.IsNullOrEmpty(request.LangCode))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "LangCode is required"));
+        var categories = await policyMetadataService.GetCategoryTree(request.LangCode);
+
+        var response = new GetCategoryTreeResponse();
+        response.LangCode = request.LangCode;
+        response.Categories.AddRange(CategoryViewProtoMapper.ToProtoList(categories));
+        return response;
+    }
+
+    public static class CategoryViewProtoMapper
+    {
+        public static CategoryView ToProto(PolicyCategoryView source)
+        {
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
+            var target = new CategoryView
+            {
+                Id = source.Id,
+                CategoryName = source.CategoryName ?? string.Empty,
+                DisplayName = source.DisplayName ?? string.Empty
+            };
+
+            if (source.Childs is { Count: > 0 })
+            {
+                foreach (var child in source.Childs)
+                {
+                    target.Childs.Add(ToProto(child));
+                }
+            }
+
+            return target;
+        }
+
+        public static IList<CategoryView> ToProtoList(
+            IEnumerable<PolicyCategoryView> source)
+        {
+            var result = new List<CategoryView>();
+
+            foreach (var item in source)
+            {
+                result.Add(ToProto(item));
+            }
+
+            return result;
+        }
+    }
 
     // Вспомогательный метод маппинга PolicyEntity -> PolicyDescriptor
     private static PolicyDescriptor MapPolicy(PolicyEntity p)

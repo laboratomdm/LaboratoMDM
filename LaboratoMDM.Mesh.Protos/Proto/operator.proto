@@ -182,6 +182,25 @@ service PolicyCatalogService {
 
   rpc GetPolicyDetails (GetPolicyDetailsRequest)
       returns (PolicyDetails);
+    
+  rpc GetCategoryTree(GetCategoryTreeRequest)
+      returns (GetCategoryTreeResponse);
+}
+
+message GetCategoryTreeRequest {
+  string lang_code = 1; // язык для перевода displayName
+}
+
+message GetCategoryTreeResponse {
+  string lang_code = 1; // язык для перевода displayName
+  repeated CategoryView categories = 2;
+}
+
+message CategoryView {
+    int32 id = 1;
+    string category_name = 2;
+    string display_name = 3;
+    repeated CategoryView childs = 4;
 }
 
 message ListPoliciesRequest {

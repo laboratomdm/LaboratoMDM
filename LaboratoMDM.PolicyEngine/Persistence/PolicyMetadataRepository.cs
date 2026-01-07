@@ -101,61 +101,153 @@ namespace LaboratoMDM.PolicyEngine.Persistence
             await tx.CommitAsync();
         }
 
-        public async Task<IReadOnlyList<PolicyCategoryView>> GetCategoryTree()
+        //public async Task<IReadOnlyList<PolicyCategoryView>> GetCategoryTree()
+        //{
+        //    using var cmd = _connection.CreateCommand();
+        //    cmd.CommandText = """
+        //      WITH RootCategories AS (
+        //        SELECT
+        //            c.Id,
+        //            c.Name AS CategoryName,
+        //            c.DisplayName,
+        //            c.ExplainText
+        //        FROM PolicyCategories c
+        //        WHERE c.ParentCategoryRef IS NULL OR c.ParentCategoryRef = ''
+        //    ),
+        //    -- Уровень 1: Вложенные категории
+        //    ChildCategories AS (
+        //        SELECT
+        //            c.Id,
+        //            c.Name AS CategoryName,
+        //            c.DisplayName,
+        //            c.ExplainText,
+        //            -- берём правую часть после ':' если есть
+        //            CASE 
+        //                WHEN instr(c.ParentCategoryRef, ':') > 0 THEN substr(c.ParentCategoryRef, instr(c.ParentCategoryRef, ':') + 1)
+        //                ELSE c.ParentCategoryRef
+        //            END AS ParentName
+        //        FROM PolicyCategories c
+        //        WHERE c.ParentCategoryRef IS NOT NULL AND c.ParentCategoryRef != ''
+        //    )
+        //    SELECT json_group_array(
+        //        json_object(
+        //            'CategoryName', r.CategoryName,
+        //            'DisplayName', r.DisplayName,
+        //            'ExplainText', r.ExplainText,
+        //            'Children', (
+        //                SELECT json_group_array(
+        //                    json_object(
+        //                        'CategoryName', ch.CategoryName,
+        //                        'DisplayName', ch.DisplayName,
+        //                        'ExplainText', ch.ExplainText
+        //                    )
+        //                )
+        //                FROM ChildCategories ch
+        //                WHERE ch.ParentName = r.CategoryName
+        //            )
+        //        )
+        //    ) AS CategoryTreeJson
+        //    FROM RootCategories r;
+        //    """;
+
+        //    using var reader = await cmd.ExecuteReaderAsync();
+        //    if (!await reader.ReadAsync())
+        //        throw new InvalidOperationException("Failed to load category tree");
+
+        //    return _categoryViewMapper.Map(reader);
+        //}
+
+        public async Task<IReadOnlyList<PolicyCategoryView>> GetCategoryTree(string langCode)
+        {
+            var categories = await LoadCategories(langCode);
+            return BuildTree(categories);
+        }
+
+        private async Task<List<(PolicyCategoryEntity Entity, string NormalizedName, string? NormalizedParent)>> LoadCategories(string langCode)
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-              WITH RootCategories AS (
                 SELECT
-                    c.Id,
-                    c.Name AS CategoryName,
-                    c.DisplayName,
-                    c.ExplainText
-                FROM PolicyCategories c
-                WHERE c.ParentCategoryRef IS NULL OR c.ParentCategoryRef = ''
-            ),
-            -- Уровень 1: Вложенные категории
-            ChildCategories AS (
-                SELECT
-                    c.Id,
-                    c.Name AS CategoryName,
-                    c.DisplayName,
-                    c.ExplainText,
-                    -- берём правую часть после ':' если есть
-                    CASE 
-                        WHEN instr(c.ParentCategoryRef, ':') > 0 THEN substr(c.ParentCategoryRef, instr(c.ParentCategoryRef, ':') + 1)
-                        ELSE c.ParentCategoryRef
-                    END AS ParentName
-                FROM PolicyCategories c
-                WHERE c.ParentCategoryRef IS NOT NULL AND c.ParentCategoryRef != ''
-            )
-            SELECT json_group_array(
-                json_object(
-                    'CategoryName', r.CategoryName,
-                    'DisplayName', r.DisplayName,
-                    'ExplainText', r.ExplainText,
-                    'Children', (
-                        SELECT json_group_array(
-                            json_object(
-                                'CategoryName', ch.CategoryName,
-                                'DisplayName', ch.DisplayName,
-                                'ExplainText', ch.ExplainText
-                            )
-                        )
-                        FROM ChildCategories ch
-                        WHERE ch.ParentName = r.CategoryName
-                    )
-                )
-            ) AS CategoryTreeJson
-            FROM RootCategories r;
+                    pc.Id,
+                    pc.Name,
+                    IFNULL(t.TextValue, pc.DisplayName) AS DisplayName,
+                    pc.ParentCategoryRef 
+                FROM PolicyCategories pc
+                LEFT JOIN Translations t ON 
+                	t.StringId = pc.DisplayName AND 
+                	t.LangCode = @langCode
             """;
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync())
-                throw new InvalidOperationException("Failed to load category tree");
+            cmd.Parameters.AddWithValue("@langCode", langCode);
 
-            return _categoryViewMapper.Map(reader);
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            var list = new List<(PolicyCategoryEntity, string, string?)>();
+
+            while (await reader.ReadAsync())
+            {
+                var entity = _categoryMapper.Map(reader);
+
+                list.Add((
+                    entity,
+                    Normalize(entity.Name),
+                    entity.ParentCategoryRef is not null
+                        ? Normalize(entity.ParentCategoryRef)
+                        : null
+                ));
+            }
+
+            return list;
         }
+
+        private static IReadOnlyList<PolicyCategoryView> BuildTree(
+            IEnumerable<(PolicyCategoryEntity Entity, 
+                string NormalizedName, 
+                string? NormalizedParent)> categories)
+        {
+            var lookup = new Dictionary<string, PolicyCategoryView>();
+            var roots = new List<PolicyCategoryView>();
+
+            // Создаём все ноды
+            foreach (var (entity, normalizedName, _) in categories)
+            {
+                lookup[normalizedName] = new PolicyCategoryView
+                {
+                    Id = entity.Id,
+                    CategoryName = entity.Name,
+                    DisplayName = entity.DisplayName
+                };
+            }
+
+            // Связываем parent -> children
+            foreach (var (entity, normalizedName, normalizedParent) in categories)
+            {
+                var node = lookup[normalizedName];
+
+                if (normalizedParent is null || !lookup.TryGetValue(normalizedParent, out var parent))
+                {
+                    roots.Add(node);
+                }
+                else
+                {
+                    parent.Childs.Add(node);
+                }
+            }
+
+            return roots;
+        }
+
+        private static string Normalize(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return value;
+
+            var idx = value.IndexOf(':');
+            return idx >= 0
+                ? value[(idx + 1)..].Trim()
+                : value.Trim();
+        }
+
 
         #endregion
 
