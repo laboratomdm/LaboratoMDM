@@ -26,8 +26,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-string dbFile = "agent.db";
-string migrationsPath = @"C:\Users\Ivan\source\repos\LaboratoMDM\LaboratoMDM.Mesh.Agent\Database";
+//string dbFile = "agent.db";
+//string migrationsPath = @"C:\Users\Ivan\source\repos\LaboratoMDM\LaboratoMDM.Mesh.Agent\Database";
+
+var dbFile =
+    Environment.GetEnvironmentVariable("DB_FILE")
+    ?? Path.Combine(AppContext.BaseDirectory, "data", "agent.db");
+
+var migrationsPath =
+    Environment.GetEnvironmentVariable("MIGRATIONS_PATH")
+    ?? Path.Combine(AppContext.BaseDirectory, "migrations");
+
+// гарантируем, что папка под БД существует
+Directory.CreateDirectory(Path.GetDirectoryName(dbFile)!);
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((ctx, services) =>

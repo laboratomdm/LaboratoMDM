@@ -84,8 +84,8 @@ public sealed class AdmxServiceImpl : AdmxService.AdmxServiceBase
             ZipFile.ExtractToDirectory(zipFilePath, extractPath);
 
             // Вызываем импорт именно этой папки
-            await _admxFolderImporter.ImportDirectoryAsync(extractPath + "\\PolicyDefinitions");
-            await _admlFolderImporter.ImportDirectoryRecursiveAsync(extractPath + "\\PolicyDefinitions");
+            await _admxFolderImporter.ImportDirectoryAsync(extractPath + "/PolicyDefinitions");
+            await _admlFolderImporter.ImportDirectoryRecursiveAsync(extractPath + "/PolicyDefinitions");
 
             return new ImportAdmxResponse
             {

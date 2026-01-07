@@ -1,18 +1,30 @@
-﻿version: "3.9"
-
-services:
+﻿services:
   redis:
     image: redis:7.2
-    container_name: laborato-redis
-    restart: unless-stopped
-
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
 
-    command: ["redis-server", "--appendonly", "yes"]
-
+  mesh-master:
+    build:
+      context: ..                       
+      dockerfile: LaboratoMDM.Mesh.Master/Dockerfile
+    environment:
+      DB_FILE: /app/data/master.db
+      MIGRATIONS_PATH: /app/migrations
     volumes:
-      - redis-data:/data
+      - master-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
 
 volumes:
-  redis-data:
+  master-data:
