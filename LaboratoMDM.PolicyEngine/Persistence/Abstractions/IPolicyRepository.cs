@@ -61,6 +61,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Abstractions
 
         Task<IReadOnlyList<PolicyGroupView>> GetPoliciesGroupedByScope(string langCode);
 
+        Task<IReadOnlyList<PolicyShortView>> GetShortByCategoryName(string categoryName, string langCode);
         Task<PolicyDetailsView> GetPolicyDetailsView(long id, string langCode);
     }
 

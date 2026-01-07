@@ -65,6 +65,30 @@ public sealed class PolicyCatalogServiceImpl(
         return response;
     }
 
+    public override async Task<GetPoliciesByCategoryResponse> GetPoliciesByCategory(
+        GetPoliciesByCategoryRequest request, 
+        ServerCallContext context)
+    {
+        if (string.IsNullOrEmpty(request.LangCode))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "LangCode is required"));
+
+        if (string.IsNullOrEmpty(request.Category))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Category is required"));
+
+        var policies = await policyQueryService.GetShortByCategoryName(request.Category, request.LangCode);
+        var response = new GetPoliciesByCategoryResponse();
+        response.LangCode = request.LangCode;
+        response.Policies.AddRange(policies.Select(p => new PolicySummary
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            DisplayName = p.DisplayName ?? string.Empty,
+            ExplainText = p.ExplainText ?? string.Empty
+        }));
+
+        return response;
+    }
+
     public override async Task<PolicyDetails> GetPolicyDetails(
         GetPolicyDetailsRequest request,
         ServerCallContext context)

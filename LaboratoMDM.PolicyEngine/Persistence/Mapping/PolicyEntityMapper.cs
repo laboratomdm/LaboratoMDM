@@ -42,4 +42,22 @@ namespace LaboratoMDM.PolicyEngine.Persistence.Mapping
             };
         }
     }
+
+    public sealed class PolicyShortViewMapper : IEntityMapper<PolicyShortView>
+    {
+        public PolicyShortView Map(SqliteDataReader r)
+        {
+            return new PolicyShortView
+            {
+                Id = r.GetInt32(r.GetOrdinal("Id")),
+                Name = r.GetString(r.GetOrdinal("Name")),
+                DisplayName = r.IsDBNull(r.GetOrdinal("DisplayName"))
+                    ? string.Empty
+                    : r.GetString(r.GetOrdinal("DisplayName")),
+                ExplainText = r.IsDBNull(r.GetOrdinal("ExplainText"))
+                    ? string.Empty
+                    : r.GetString(r.GetOrdinal("ExplainText")),
+            };
+        }
+    }
 }

@@ -2,7 +2,6 @@
 using LaboratoMDM.PolicyEngine.Persistence.Abstractions;
 using LaboratoMDM.PolicyEngine.Persistence.Mapping;
 using Microsoft.Data.Sqlite;
-using System.Collections.Generic;
 
 namespace LaboratoMDM.PolicyEngine.Persistence
 {
