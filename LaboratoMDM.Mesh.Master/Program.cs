@@ -37,7 +37,7 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect("redis:6379,abortConnect=false"));
+            ConnectionMultiplexer.Connect("redis:6379"));
 
         services.AddSingleton<IAgentRegistry, RedisAgentRegistry>();
         services.AddSingleton<INodeInfoRepository, RedisNodeInfoRepository>();
