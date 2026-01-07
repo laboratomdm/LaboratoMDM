@@ -1,28 +1,50 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
-USER $APP_UID
-WORKDIR /app
-
-
-# This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+
+COPY ["LaboratoMDM.sln", "./"]
+
 COPY ["LaboratoMDM.Mesh.Master/LaboratoMDM.Mesh.Master.csproj", "LaboratoMDM.Mesh.Master/"]
-RUN dotnet restore "./LaboratoMDM.Mesh.Master/LaboratoMDM.Mesh.Master.csproj"
-COPY . .
-WORKDIR "/src/LaboratoMDM.Mesh.Master"
-RUN dotnet build "./LaboratoMDM.Mesh.Master.csproj" -c $BUILD_CONFIGURATION -o /app/build
+COPY ["LaboratoMDM.Mesh.Protos/LaboratoMDM.Mesh.Protos.csproj", "LaboratoMDM.Mesh.Protos/"]
+COPY ["LaboratoMDM.NodeEngine/LaboratoMDM.NodeEngine.csproj", "LaboratoMDM.NodeEngine/"]
+COPY ["LaboratoMDM.PolicyEngine/LaboratoMDM.PolicyEngine.csproj", "LaboratoMDM.PolicyEngine/"]
+COPY ["LaboratoMDM.Core/LaboratoMDM.Core.csproj", "LaboratoMDM.Core/"]
+COPY ["LaboratoMDM.ActiveDirectory.Core/LaboratoMDM.ActiveDirectory.Core.csproj", "LaboratoMDM.ActiveDirectory.Core/"]
 
-# This stage is used to publish the service project to be copied to the final stage
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./LaboratoMDM.Mesh.Master.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
-FROM base AS final
+RUN dotnet restore "LaboratoMDM.Mesh.Master/LaboratoMDM.Mesh.Master.csproj"
+
+# 2) копируем исходники 
+COPY ["LaboratoMDM.Mesh.Master/", "LaboratoMDM.Mesh.Master/"]
+COPY ["LaboratoMDM.Mesh.Protos/", "LaboratoMDM.Mesh.Protos/"]
+COPY ["LaboratoMDM.NodeEngine/", "LaboratoMDM.NodeEngine/"]
+COPY ["LaboratoMDM.PolicyEngine/", "LaboratoMDM.PolicyEngine/"]
+COPY ["LaboratoMDM.Core/", "LaboratoMDM.Core/"]
+COPY ["LaboratoMDM.ActiveDirectory.Core/", "LaboratoMDM.ActiveDirectory.Core/"]
+
+
+# publish
+RUN dotnet publish "LaboratoMDM.Mesh.Master/LaboratoMDM.Mesh.Master.csproj" -c Release -o /app/publish --no-restore
+
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+
+# данные и миграции внутри контейнера
+RUN mkdir -p /app/data /app/migrations
+
+COPY --from=build /app/publish/ ./
+
+# миграции КОРНЕ репо 
+COPY ["1__policies_tables.sql", "/app/migrations/"]
+COPY ["2__pilicies_complience.sql", "/app/migrations/"]
+COPY ["3__adml_translation_structure_tables.sql", "/app/migrations/"]
+COPY ["4__presentation_tables.sql", "/app/migrations/"]
+
+# если миграции лежат в папке проекта
+# COPY ["LaboratoMDM.PolicyEngine/Database/", "/app/migrations/"]
+
+ENV DB_FILE=/app/data/master.db
+ENV MIGRATIONS_PATH=/app/migrations
+
+EXPOSE 5000
 ENTRYPOINT ["dotnet", "LaboratoMDM.Mesh.Master.dll"]

@@ -19,15 +19,25 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
-string dbFile = "master.db";
-string migrationsPath = @"C:\Users\Ivan\source\repos\LaboratoMDM";
+//string dbFile = "master.db";
+//string migrationsPath = @"C:\Users\Ivan\source\repos\LaboratoMDM";
+
+var dbFile =
+    Environment.GetEnvironmentVariable("DB_FILE")
+    ?? Path.Combine(AppContext.BaseDirectory, "data", "master.db");
+
+var migrationsPath =
+    Environment.GetEnvironmentVariable("MIGRATIONS_PATH")
+    ?? Path.Combine(AppContext.BaseDirectory, "migrations");
+
+Directory.CreateDirectory(Path.GetDirectoryName(dbFile)!);
 
 // Создаем файл базы, если не существует
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect("127.0.0.1:6379"));
+            ConnectionMultiplexer.Connect("redis:6379,abortConnect=false"));
 
         services.AddSingleton<IAgentRegistry, RedisAgentRegistry>();
         services.AddSingleton<INodeInfoRepository, RedisNodeInfoRepository>();
