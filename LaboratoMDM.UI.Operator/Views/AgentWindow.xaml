@@ -6,7 +6,9 @@
         xmlns:local="clr-namespace:LaboratoMDM.UI.Operator.Views"
         xmlns:ribbon="clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon"
         mc:Ignorable="d"
-        Title="AgentWindow" Height="600" Width="1000">
+        Title="AgentWindow" Height="600" Width="1000"
+        FontFamily="Segoe UI" FontSize="12">
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -146,85 +148,115 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Master: List of Agents -->
+            <!-- Master: List of Agents с контекстным меню -->
             <ListBox Grid.Column="0" ItemsSource="{Binding Agents}" SelectedItem="{Binding SelectedAgent, Mode=TwoWay}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="4">
-                            <TextBlock Text="{Binding HostName}" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding IpAddress}"/>
-                            <TextBlock Text="{Binding LastHeartbeat, StringFormat='Last heartbeat: {0:G}'}"/>
+                            <TextBlock Text="{Binding HostName}" FontWeight="Bold" FontSize="14"/>
+                            <TextBlock Text="{Binding IpAddress}" FontSize="12"/>
+                            <TextBlock Text="{Binding LastHeartbeat, StringFormat='Last heartbeat: {0:G}'}" FontSize="12"/>
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
+
+                <!-- Context Menu для агента -->
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Примененные политики"
+                      Click="AgentContext_ShowAppliedPolicies"/>
+                        <MenuItem Header="Применить политику"
+                      Click="AgentContext_ApplyPolicy"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
             </ListBox>
 
-            <!-- Detail: Agent Info -->
-            <TabControl Grid.Column="1" Margin="8" DataContext="{Binding SelectedAgentDetail}">
-                <TabItem Header="Overview">
-                    <StackPanel Margin="8">
-                        <TextBlock Text="{Binding AgentId}"/>
-                        <TextBlock Text="{Binding HostName}"/>
-                        <TextBlock Text="{Binding IpAddress}"/>
-                        <TextBlock Text="{Binding IsOnline}"/>
-                        <TextBlock Text="{Binding LastHeartbeat}"/>
-                        <TextBlock Text="{Binding Manufacturer}"/>
-                        <TextBlock Text="{Binding Model}"/>
-                        <TextBlock Text="{Binding FirmwareVersion}"/>
-                    </StackPanel>
-                </TabItem>
+            <!-- Detail: Agent Info с ScrollViewer -->
+            <ScrollViewer Grid.Column="1" Margin="8" VerticalScrollBarVisibility="Auto">
+                <TabControl DataContext="{Binding SelectedAgentDetail}">
+                    <TabItem Header="Overview">
+                        <StackPanel Margin="8">
+                            <TextBlock Text="{Binding AgentId}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding HostName}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding IpAddress}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding IsOnline}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding LastHeartbeat}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding Manufacturer}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding Model}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding FirmwareVersion}" FontSize="14" Margin="0,0,0,4"/>
+                        </StackPanel>
+                    </TabItem>
 
-                <TabItem Header="System Info">
-                    <StackPanel Margin="8">
-                        <TextBlock Text="{Binding Cpu}"/>
-                        <TextBlock Text="{Binding RamGb, StringFormat='RAM: {0} GB'}"/>
-                        <TextBlock Text="{Binding OsVersion}"/>
-                        <TextBlock Text="{Binding HostnameFull}"/>
-                        <TextBlock Text="Disks:" FontWeight="Bold"/>
-                        <ItemsControl ItemsSource="{Binding Disks}"/>
-                        <TextBlock Text="GPU:" FontWeight="Bold"/>
-                        <ItemsControl ItemsSource="{Binding Gpus}"/>
-                        <TextBlock Text="IP Addresses:" FontWeight="Bold"/>
-                        <ItemsControl ItemsSource="{Binding IpAddresses}"/>
-                        <TextBlock Text="MAC Addresses:" FontWeight="Bold"/>
-                        <ItemsControl ItemsSource="{Binding MacAddresses}"/>
-                        <TextBlock Text="{Binding Motherboard}"/>
-                    </StackPanel>
-                </TabItem>
+                    <TabItem Header="System Info">
+                        <StackPanel Margin="8">
+                            <TextBlock Text="{Binding Cpu}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding RamGb, StringFormat='RAM: {0} GB'}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding OsVersion}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding HostnameFull}" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="Disks:" FontWeight="Bold" Margin="0,4,0,2"/>
+                            <ItemsControl ItemsSource="{Binding Disks}" Margin="0,0,0,4"/>
+                            <TextBlock Text="GPU:" FontWeight="Bold" Margin="0,4,0,2"/>
+                            <ItemsControl ItemsSource="{Binding Gpus}" Margin="0,0,0,4"/>
+                            <TextBlock Text="IP Addresses:" FontWeight="Bold" Margin="0,4,0,2"/>
+                            <ItemsControl ItemsSource="{Binding IpAddresses}" Margin="0,0,0,4"/>
+                            <TextBlock Text="MAC Addresses:" FontWeight="Bold" Margin="0,4,0,2"/>
+                            <ItemsControl ItemsSource="{Binding MacAddresses}" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding Motherboard}" FontSize="14" Margin="0,0,0,4"/>
+                        </StackPanel>
+                    </TabItem>
+                    <TabItem Header="Users">
+                        <Grid Margin="8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
 
-                <TabItem Header="Users">
-                    <Grid Margin="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                            <TextBlock
+                                Text="{Binding Users.Error}"
+                                Foreground="Red"/>
 
-                        <TextBlock
-                        Text="{Binding Users.Error}"
-                        Foreground="Red"/>
+                            <!-- Users list с контекстным меню -->
+                            <DataGrid
+                                Grid.Row="1"
+                                ItemsSource="{Binding Users.Users}"
+                                AutoGenerateColumns="False"
+                                IsReadOnly="True"
+                                RowHeaderWidth="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                                    <DataGridTextColumn Header="SID" Binding="{Binding Sid}"/>
+                                    <DataGridTextColumn Header="Type" Binding="{Binding AccountType}"/>
+                                    <DataGridTextColumn Header="Last Logon" Binding="{Binding LastLogon, StringFormat={}{0:G}}"/>
+                                    <DataGridTextColumn Header="Groups" Binding="{Binding Groups}"/>
+                                </DataGrid.Columns>
 
-                        <!-- Users list -->
-                        <DataGrid
-                        Grid.Row="1"
-                        ItemsSource="{Binding Users.Users}"
-                        AutoGenerateColumns="False"
-                        IsReadOnly="True">
+                                <!-- Context Menu для пользователя -->
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="ContextMenu">
+                                            <Setter.Value>
+                                                <ContextMenu
+                                                    DataContext="{Binding PlacementTarget.DataContext,
+                                                    RelativeSource={RelativeSource Self}}">
 
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                                <DataGridTextColumn Header="SID" Binding="{Binding Sid}"/>
-                                <DataGridTextColumn Header="Type" Binding="{Binding AccountType}"/>
-                                <!--<DataGridCheckBoxColumn Header="Enabled" Binding="{Binding IsEnabled}"/>-->
-                                <DataGridTextColumn Header="Last Logon"
-                                    Binding="{Binding LastLogon, StringFormat={}{0:G}}"/>
-                                <DataGridTextColumn Header="Groups"
-                                    Binding="{Binding Groups}"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-                </TabItem>
+                                                    <MenuItem Header="Примененные политики"
+                                                        Command="{Binding ApplyPolicyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
 
-            </TabControl>
+                                                    <MenuItem Header="Применить политику"
+                                                        Command="{Binding ApplyPolicyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                                </ContextMenu>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DataGrid.RowStyle>
+
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </ScrollViewer>
         </Grid>
     </Grid>
 </Window>

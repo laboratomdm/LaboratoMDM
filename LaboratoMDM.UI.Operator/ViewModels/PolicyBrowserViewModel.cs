@@ -18,6 +18,17 @@ namespace LaboratoMDM.UI.Operator.ViewModels
             GetPolicies();
         }
 
+        private object _selectedTarget;
+        public object SelectedTarget
+        {
+            get => _selectedTarget;
+            set
+            {
+                _selectedTarget = value;
+                OnPropertyChanged();
+            }
+        }
+
         private PolicyCategoryNodeViewModel? _selectedCategory;
         public PolicyCategoryNodeViewModel? SelectedCategory
         {

@@ -321,6 +321,7 @@ message PolicySummary {
   int64 id = 1;
   string name = 2;
   string display_name = 3;
+  string explain_text = 4;
 }
 
 // POLICY ASSIGNMENT

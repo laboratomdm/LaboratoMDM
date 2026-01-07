@@ -143,27 +143,43 @@
 
             <!-- Policy Editor        -->
             <Border Grid.Column="4"
-                    Background="White">
-                <DockPanel>
+        Background="White">
+                <TabControl>
 
-                    <TextBlock DockPanel.Dock="Top"
-                               Text="{Binding SelectedPolicy.Name}"
-                               Style="{StaticResource PanelHeaderStyle}" />
+                    <!-- Таб 1: Настройки политики -->
+                    <TabItem Header="Настройки политики">
+                        <DockPanel>
 
-                    <!-- Описание -->
-                    <TextBlock DockPanel.Dock="Top"
-                               Margin="8,0,8,8"
-                               TextWrapping="Wrap"
-                               Foreground="Gray"
-                               Text="{Binding SelectedPolicy.ExplainText}" />
+                            <!-- Заголовок -->
+                            <TextBlock DockPanel.Dock="Top"
+                           Text="{Binding SelectedPolicy.Name}"
+                           Style="{StaticResource PanelHeaderStyle}" />
 
-                    <!-- существующий редактор -->
-                    <ContentControl>
-                        <views:PolicyEditorControl DataContext="{Binding PolicyEditorVM}" />
-                    </ContentControl>
+                            <TextBlock Text="{Binding SelectedPolicy.ExplainText}" TextWrapping="Wrap" Foreground="Gray" />
 
-                </DockPanel>
+                            <!-- Редактор -->
+                            <ContentControl>
+                                <views:PolicyEditorControl
+                        DataContext="{Binding PolicyEditorVM}" />
+                            </ContentControl>
+
+                        </DockPanel>
+                    </TabItem>
+
+                    <!-- Таб 2: Описание -->
+                    <TabItem Header="Описание">
+                        <ScrollViewer Margin="8"
+                          VerticalScrollBarVisibility="Auto">
+                            <TextBlock
+                    Text="{Binding SelectedPolicy.Description}"
+                    TextWrapping="Wrap"
+                    Foreground="Gray" />
+                        </ScrollViewer>
+                    </TabItem>
+
+                </TabControl>
             </Border>
+
 
         </Grid>
 

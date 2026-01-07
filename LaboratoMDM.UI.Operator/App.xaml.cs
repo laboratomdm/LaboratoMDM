@@ -30,7 +30,10 @@ namespace LaboratoMDM.UI.Operator
 
             services.AddSingleton(sp =>
                 new PolicyCatalogService.PolicyCatalogServiceClient(
-                        GrpcChannel.ForAddress("http://localhost:5000")
+                        GrpcChannel.ForAddress("http://localhost:5000", new GrpcChannelOptions()
+                        {
+                            MaxReceiveMessageSize = 50 * 1024 * 1024
+                        })
                     ));
 
             // Регистрируем окно через DI

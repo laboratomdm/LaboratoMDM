@@ -12,6 +12,7 @@ namespace LaboratoMDM.PolicyEngine.Persistence
         public int Id { get; set; }
         public string Name { get; set; } = null!;
         public string DisplayName { get; set; } = null!;
+        public string ExplainText { get; set; } = null!;
     }
 
     public sealed class PolicyGroupView
@@ -540,20 +541,24 @@ WHERE PolicyId = @pid AND ElementId = @eid;
             using var cmd = _conn.CreateCommand();
             cmd.CommandText = """
                 SELECT 
-                    p.Scope, 
-                    json_group_array(
-                        json_object(
-                            'Id', p.Id,
-                            'Name', p.Name,
-                            'DisplayName', IFNULL(t.TextValue, p.DisplayName)
-                        )
-                    ) AS policies
+                p.Scope, 
+                json_group_array(
+                    json_object(
+                        'Id', p.Id,
+                        'Name', p.Name,
+                        'DisplayName', IFNULL(t.TextValue, p.DisplayName),
+                        'ExplainText', IFNULL(t1.TextValue, p.ExplainText)
+                    )
+                ) AS policies
                 FROM Policies p
                 LEFT JOIN Translations t
                     ON t.StringId = p.DisplayName
                    AND t.LangCode = @langCode
+                LEFT JOIN Translations t1
+                    ON t1.StringId = p.ExplainText
+                   AND t1.LangCode = @langCode
                 GROUP BY p.Scope;
-            """;
+                """;
 
             cmd.Parameters.AddWithValue("@langCode", langCode);
 

@@ -1,18 +1,9 @@
-﻿using LaboratoMDM.Mesh.Master.Grpc.Operator.V1;
+﻿using CommunityToolkit.Mvvm.Input;
+using LaboratoMDM.Mesh.Master.Grpc.Operator.V1;
 using LaboratoMDM.UI.Operator.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace LaboratoMDM.UI.Operator.Views
 {
@@ -22,18 +13,24 @@ namespace LaboratoMDM.UI.Operator.Views
     public partial class AgentWindow : Window
     {
         private readonly AgentsMasterDetailViewModel _viewModel;
-        private readonly PolicyBrowserWindow _policyBrowserWindow;
+        private readonly PolicyCatalogService.PolicyCatalogServiceClient _policyCatalogServiceClient;
+        private PolicyBrowserWindow _policyBrowserWindow;
+        public ICommand ApplyPolicyCommand { get; }
+
 
         public AgentWindow(
             AgentService.AgentServiceClient agentClient,
             UserService.UserServiceClient userClient,
-            PolicyBrowserWindow policyBrowserWindow)
+            PolicyCatalogService.PolicyCatalogServiceClient policyCatalogServiceClient)
         {
             InitializeComponent();
 
+            ApplyPolicyCommand = new RelayCommand<object>(OnApplyPolicy);
+
+            _policyCatalogServiceClient = policyCatalogServiceClient;
+
             // Создаем ViewModel с gRPC клиентом
             _viewModel = new AgentsMasterDetailViewModel(agentClient, userClient);
-            _policyBrowserWindow = policyBrowserWindow;
 
             // Назначаем DataContext для биндинга XAML
             DataContext = _viewModel;
@@ -65,5 +62,60 @@ namespace LaboratoMDM.UI.Operator.Views
                 _policyBrowserWindow.Show();
             }
         }
+
+        // Агент
+        private void AgentContext_ShowAppliedPolicies(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.SelectedAgent == null)
+                return;
+
+            OpenPolicyBrowserWindow(_viewModel.SelectedAgent);
+        }
+
+        private void AgentContext_ApplyPolicy(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.SelectedAgent == null)
+                return;
+
+            OpenPolicyBrowserWindow(_viewModel.SelectedAgent);
+        }
+
+        // Пользователь
+        //public ICommand ApplyPolicyCommand => new RelayCommand<object>(OnApplyPolicy);
+
+        private void OnApplyPolicy(object? target)
+        {
+            if (target == null)
+                return;
+
+            OpenPolicyBrowserWindow(target);
+        }
+
+
+        private void OpenPolicyBrowserWindow(object target)
+        {
+            // Если окно еще не создан — создаем
+            if (_policyBrowserWindow == null)
+            {
+                _policyBrowserWindow = new PolicyBrowserWindow(_policyCatalogServiceClient);
+            }
+
+            // Передаем выбранный агент или пользователя в ViewModel окна
+            if (_policyBrowserWindow.DataContext is PolicyBrowserViewModel vm)
+            {
+                vm.SelectedTarget = target; // добавляем это свойство в PolicyBrowserViewModel
+            }
+
+            // Показываем окно
+            if (!_policyBrowserWindow.IsVisible)
+            {
+                _policyBrowserWindow.Show();
+            }
+            else
+            {
+                _policyBrowserWindow.Activate();
+            }
+        }
+
     }
 }

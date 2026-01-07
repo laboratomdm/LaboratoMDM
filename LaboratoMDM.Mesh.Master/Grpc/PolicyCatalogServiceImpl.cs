@@ -59,7 +59,8 @@ public sealed class PolicyCatalogServiceImpl : PolicyCatalogService.PolicyCatalo
             {
                 Id = p.Id,
                 Name = p.Name ?? string.Empty,
-                DisplayName = p.DisplayName ?? string.Empty
+                DisplayName = p.DisplayName ?? string.Empty,
+                ExplainText = p.ExplainText ?? string.Empty
             }));
 
             response.Groups.Add(protoGroup);

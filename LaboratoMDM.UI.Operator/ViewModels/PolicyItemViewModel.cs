@@ -9,6 +9,7 @@ public sealed class PolicyItemViewModel : ObservableObject
     public long Id => Definition.Id;
     public string Name => Definition.Name;
     public string? ExplainText => Definition.DisplayName;
+    public string? Description => Definition.ExplainText;
 
     public string ShowName => Name + "\n" + ExplainText;
 
