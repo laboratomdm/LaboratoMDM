@@ -27,7 +27,7 @@ jobs:
 
       # Тесты только для PolicyEngine.Tests (не solution)
       - name: Test (PolicyEngine.Tests)
-        run: dotnet test ./LaboratoMDM.PolicyEngine.Tests/LaboratoMDM.PolicyEngine.Tests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test ./LaboratoMDM.PolicyEngine.Tests/LaboratoMDM.PolicyEngine.Tests.csproj -c Release --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
         if: always()
