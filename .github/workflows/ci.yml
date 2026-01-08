@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # Restore только backend-проекта (не solution)
+      - name: Restore (Mesh.Master)
+        run: dotnet restore ./LaboratoMDM.Mesh.Master/LaboratoMDM.Mesh.Master.csproj
+
+      - name: Build (Mesh.Master)
+        run: dotnet build ./LaboratoMDM.Mesh.Master/LaboratoMDM.Mesh.Master.csproj -c Release --no-restore
+
+      # Тесты только для PolicyEngine.Tests (не solution)
+      - name: Test (PolicyEngine.Tests)
+        run: dotnet test ./LaboratoMDM.PolicyEngine.Tests/LaboratoMDM.PolicyEngine.Tests.csproj -c Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"

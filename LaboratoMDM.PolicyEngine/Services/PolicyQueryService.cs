@@ -31,6 +31,9 @@ namespace LaboratoMDM.PolicyEngine.Services
         public Task<IReadOnlyList<PolicyGroupView>> GetPoliciesGroupedByScope(string langCode)
             => _repo.GetPoliciesGroupedByScope(langCode);
 
+        public Task<IReadOnlyList<PolicyShortView>> GetShortByCategoryName(string categoryName, string langCode)
+            => _repo.GetShortByCategoryName(categoryName, langCode);
+
         public Task<PolicyDetailsView> GetPolicyDetailsView(long id, string langCode)
             => _repo.GetPolicyDetailsView(id, langCode);
     }

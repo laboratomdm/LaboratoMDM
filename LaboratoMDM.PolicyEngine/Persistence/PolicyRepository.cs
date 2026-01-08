@@ -24,10 +24,12 @@ namespace LaboratoMDM.PolicyEngine.Persistence
     public sealed class PolicyRepository(
         SqliteConnection conn,
         IEntityMapper<PolicyEntity> mapper,
+        IEntityMapper<PolicyShortView> shortViewMapper,
         IEntityMapper<PolicyDetailsView> detailsViewMapper) : IPolicyRepository
     {
         private readonly SqliteConnection _conn = conn;
         private readonly IEntityMapper<PolicyEntity> _mapper = mapper;
+        private readonly IEntityMapper<PolicyShortView> _shortViewMapper = shortViewMapper;
         private readonly IEntityMapper<PolicyDetailsView> _detailsViewMapper = detailsViewMapper;
 
         public async Task<PolicyEntity?> GetById(int policyId)
@@ -533,6 +535,40 @@ WHERE PolicyId = @pid AND ElementId = @eid;
             var list = new List<PolicyEntity>();
             while (await reader.ReadAsync())
                 list.Add(_mapper.Map(reader));
+            return list;
+        }
+
+        public async Task<IReadOnlyList<PolicyShortView>> GetShortByCategoryName(string categoryName, string langCode)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT 
+                	p.Id,
+                	p.Name,
+                	IFNULL(t.TextValue, p.DisplayName) AS DisplayName,
+                	IFNULL(t1.TextValue, p.ExplainText) AS ExplainText
+                FROM Policies p 
+                LEFT JOIN Translations t
+                    ON t.StringId = p.DisplayName
+                   AND t.LangCode = @langCode
+                LEFT JOIN Translations t1
+                    ON t1.StringId = p.ExplainText
+                   AND t1.LangCode = @langCode
+                WHERE @parentCategory = TRIM(
+                	CASE
+                		WHEN instr(p.ParentCategoryRef , ':') > 0
+                			THEN substr(p.ParentCategoryRef, instr(p.ParentCategoryRef, ':') + 1)
+                		ELSE p.ParentCategoryRef
+                	END
+                );
+                """;
+            cmd.Parameters.AddWithValue("@parentCategory", categoryName);
+            cmd.Parameters.AddWithValue("@langCode", langCode);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            var list = new List<PolicyShortView>();
+            while (await reader.ReadAsync())
+                list.Add(_shortViewMapper.Map(reader));
             return list;
         }
 

@@ -179,9 +179,41 @@ service PolicyCatalogService {
 
   rpc ListPoliciesGroupedByScope (ListPoliciesGroupedByScopeRequest)
       returns (ListPoliciesGroupedByScopeResponse);
+  
+  rpc GetCategoryTree(GetCategoryTreeRequest)
+      returns (GetCategoryTreeResponse);
+
+  rpc GetPoliciesByCategory(GetPoliciesByCategoryRequest)
+      returns (GetPoliciesByCategoryResponse);
 
   rpc GetPolicyDetails (GetPolicyDetailsRequest)
       returns (PolicyDetails);
+}
+
+message GetPoliciesByCategoryRequest {
+    string lang_code = 1;
+    string category = 2;
+}
+
+message GetPoliciesByCategoryResponse {
+    string lang_code = 1;
+    repeated PolicySummary policies = 2;
+}
+
+message GetCategoryTreeRequest {
+  string lang_code = 1; // язык для перевода displayName
+}
+
+message GetCategoryTreeResponse {
+  string lang_code = 1; // язык для перевода displayName
+  repeated CategoryView categories = 2;
+}
+
+message CategoryView {
+    int32 id = 1;
+    string category_name = 2;
+    string display_name = 3;
+    repeated CategoryView childs = 4;
 }
 
 message ListPoliciesRequest {

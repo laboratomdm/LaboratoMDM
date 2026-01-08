@@ -13,11 +13,8 @@ namespace LaboratoMDM.PolicyEngine.Domain
         [JsonPropertyName("DisplayName")]
         public string DisplayName { get; set; }
 
-        [JsonPropertyName("ExplainText")]
-        public string? ExplainText { get; set; }
-
         [JsonPropertyName("Children")]
-        public IReadOnlyList<PolicyCategoryView> Childs { get; set; }
-            = Array.Empty<PolicyCategoryView>();
+        public IList<PolicyCategoryView> Childs { get; set; }
+            = new List<PolicyCategoryView>();
     }
 }

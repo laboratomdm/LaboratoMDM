@@ -13,6 +13,7 @@ namespace LaboratoMDM.PolicyEngine.Services.Abstractions
             PolicyEvaluationContext context);
 
         Task<IReadOnlyList<PolicyGroupView>> GetPoliciesGroupedByScope(string langCode);
+        Task<IReadOnlyList<PolicyShortView>> GetShortByCategoryName(string categoryName, string langCode);
         Task<PolicyDetailsView> GetPolicyDetailsView(long id, string langCode);
     }
 }

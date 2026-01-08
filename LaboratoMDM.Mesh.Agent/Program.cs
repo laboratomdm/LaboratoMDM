@@ -75,6 +75,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IAgentPolicyService, AgentPolicyService>();
 
         services.AddSingleton<IEntityMapper<PolicyEntity>, PolicyEntityMapper>();
+        services.AddSingleton<IEntityMapper<PolicyShortView>, PolicyShortViewMapper>();
         services.AddSingleton<IEntityMapper<PolicyDetailsView>, PolicyDetailsViewMapper>();
         services.AddSingleton<IPolicyRepository, PolicyRepository>();
         services.AddSingleton<IPolicyQueryService, PolicyQueryService>();
